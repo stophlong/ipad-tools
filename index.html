@@ -1,0 +1,1770 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
+    <meta name="apple-mobile-web-app-title" content="My Function">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Offline ScriptCalc</title>
+    
+    <!-- LOADER SCRIPT: Handles CDN -> Local Fallback -->
+    <script>
+        // Track errors for the UI
+        window.scriptErrors = [];
+        window.logScriptError = function(src) {
+            window.scriptErrors.push(src);
+            if(window.updateStatus) window.updateStatus();
+        };
+
+        // Fallback logic: If CDN fails, load local
+        window.loadFallback = function(cdnScript, localSrc) {
+            console.warn('CDN load failed for ' + cdnScript.src + '. Switching to local file: ' + localSrc);
+            var s = document.createElement('script');
+            s.src = localSrc;
+            s.defer = true;
+            s.onerror = function() { window.logScriptError(localSrc); };
+            document.head.appendChild(s);
+        };
+    </script>
+
+    <!-- LIBRARY SCRIPTS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/12.4.0/math.js" defer onerror="window.loadFallback(this, 'math.js')"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/luxon/3.4.4/luxon.min.js" defer onerror="window.loadFallback(this, 'luxon.js')"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js" defer onerror="window.loadFallback(this, 'plotly.min.js')"></script>
+
+    <style>
+        /* CSS Variables */
+        :root {
+            --bg-body: #f8fafc;
+            --bg-white: #ffffff;
+            --bg-slate-50: #f8fafc;
+            --bg-slate-100: #f1f5f9;
+            --border-color: #e2e8f0;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --danger: #dc2626;
+            --danger-bg: #fef2f2;
+            --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            --font-mono: "Menlo", "Consolas", "Monaco", "Liberation Mono", "Lucida Console", monospace;
+        }
+
+        /* Reset & Base */
+        * { box-sizing: border-box; }
+        body {
+            margin: 0; padding: 0;
+            font-family: var(--font-sans);
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex; flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Utilities */
+        .hidden { display: none !important; }
+        .flex { display: flex; }
+        .items-center { align-items: center; }
+        .gap-2 { gap: 0.5rem; }
+        
+        /* Header */
+        header {
+            background: var(--bg-white);
+            border-bottom: 1px solid var(--border-color);
+            padding: 0.75rem 1.5rem;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            z-index: 20;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        }
+
+        .logo-box {
+            width: 32px; height: 32px;
+            background-color: var(--primary);
+            border-radius: 6px; color: white;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; font-size: 1.125rem;
+        }
+        h1 { margin: 0; font-size: 1.25rem; font-weight: 700; letter-spacing: -0.025em; }
+
+        /* Buttons */
+        .btn {
+            border: none; cursor: pointer;
+            padding: 0.375rem 0.75rem;
+            border-radius: 0.375rem;
+            font-size: 0.875rem; font-weight: 500;
+            transition: all 0.2s;
+            display: inline-flex; align-items: center; gap: 0.5rem;
+        }
+        .btn-ghost { background: transparent; color: var(--text-muted); }
+        .btn-ghost:hover { background: var(--bg-slate-100); color: var(--text-main); }
+        .btn-danger:hover { color: var(--danger); background: var(--danger-bg); }
+        .btn-primary { background-color: var(--primary); color: white; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); }
+        .btn-primary:hover { background-color: var(--primary-hover); }
+        .btn-primary:active { transform: scale(0.98); }
+
+        /* Main Layout */
+        main { flex: 1; display: flex; overflow: hidden; position: relative; }
+
+        .panel { flex: 1; display: flex; flex-direction: column; min-width: 0; position: relative; }
+        .input-panel { background: white; border-right: 1px solid var(--border-color); z-index: 10; }
+        .output-panel { background: var(--bg-slate-50); }
+
+        .section-header {
+            padding: 0 1rem;
+            background-color: var(--bg-slate-50);
+            border-bottom: 1px solid var(--border-color);
+            display: flex; justify-content: space-between; align-items: center;
+            height: 40px;
+            flex-shrink: 0;
+        }
+        .section-label { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: var(--text-muted); }
+
+        /* Tabs */
+        .tabs { display: flex; height: 100%; }
+        .tab-btn {
+            background: transparent; border: none;
+            padding: 0 1rem;
+            font-size: 0.75rem; font-weight: 600; text-transform: uppercase;
+            color: var(--text-muted);
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            height: 100%;
+        }
+        .tab-btn:hover { color: var(--text-main); }
+        .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+        /* Content Areas */
+        textarea {
+            flex: 1; width: 100%; padding: 1rem;
+            border: none; resize: none; outline: none;
+            font-family: var(--font-mono); font-size: 0.95rem; line-height: 1.6;
+            color: var(--text-main);
+        }
+
+        .output-content {
+            flex: 1; padding: 1rem;
+            overflow-y: auto;
+            font-family: var(--font-mono); font-size: 0.95rem;
+            padding-bottom: 5rem;
+        }
+
+        #graphs-container {
+            flex: 1; width: 100%; height: 100%;
+            background: white;
+            overflow-y: auto;
+            padding: 1rem;
+        }
+
+        /* Output Styling */
+        .output-line { margin-bottom: 0.25rem; word-break: break-word; white-space: pre-wrap; }
+        .cmd-line {
+            color: var(--text-muted); font-size: 0.75rem; font-weight: bold;
+            margin-top: 0.75rem; background: rgba(0,0,0,0.03);
+            padding: 2px 6px; border-radius: 4px; display: inline-block;
+        }
+        .res-line { padding-left: 1rem; padding-top: 0.25rem; }
+        .err-line {
+            color: var(--danger); background: var(--danger-bg);
+            border-left: 3px solid var(--danger); padding: 0.25rem 0.5rem;
+            margin-top: 0.25rem; font-size: 0.875rem;
+        }
+        .info-line { color: var(--text-muted); font-style: italic; font-size: 0.75rem; margin-top: 0.5rem; }
+        .diag-error { color: #b91c1c; background: #fef2f2; border: 1px solid #fecaca; padding: 1rem; border-radius: 0.5rem; margin-top: 1rem; font-size: 0.875rem; }
+        .pretty-date { margin-left: 0.75rem; color: var(--text-muted); font-size: 0.75rem; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; border: 1px solid #cbd5e1; user-select: all; }
+        .result-val { color: #4338ca; font-weight: 500; }
+
+        /* Mobile FAB */
+        .fab {
+            display: none; position: absolute; bottom: 1rem; right: 1rem;
+            width: 48px; height: 48px; border-radius: 50%;
+            background: var(--primary); color: white; border: none;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            align-items: center; justify-content: center; z-index: 30; cursor: pointer;
+        }
+
+        /* Dialog/Modal */
+        dialog {
+            border: none; border-radius: 0.5rem; padding: 0;
+            max-width: 600px; width: 95%;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+        dialog::backdrop { background: rgba(15, 23, 42, 0.5); backdrop-filter: blur(2px); }
+        .modal-header { padding: 1.5rem; display: flex; justify-content: space-between; align-items: center; }
+        .modal-body { padding: 0 1.5rem 1.5rem 1.5rem; max-height: 70vh; overflow-y: auto; }
+        .code-block { background: #1e293b; color: #e2e8f0; padding: 0.75rem; border-radius: 0.375rem; font-family: var(--font-mono); font-size: 0.75rem; margin-bottom: 0.5rem; display: block; white-space: pre-wrap; }
+        
+        @media (max-width: 768px) {
+            main { flex-direction: column; }
+            .input-panel { height: 50%; border-right: none; border-bottom: 1px solid var(--border-color); }
+            .output-panel { height: 50%; }
+            .fab { display: flex; }
+            .desktop-run-btn { display: none; }
+            .shortcut-hint { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="flex items-center gap-3">
+            <div class="logo-box">∑</div>
+            <h1>ScriptCalc</h1>
+        </div>
+        <div class="flex gap-2">
+             <button onclick="showFullHelp()" class="btn btn-ghost">Help</button>
+             <button onclick="showCheatsheet()" class="btn btn-ghost">Cheatsheet</button>
+             <button onclick="clearAll()" class="btn btn-ghost btn-danger">Reset</button>
+            <button onclick="runCalculation()" class="btn btn-primary desktop-run-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                Run
+            </button>
+        </div>
+    </header>
+
+    <main>
+        <!-- Input Section -->
+        <section class="panel input-panel">
+            <div class="section-header">
+                <span class="section-label">Input</span>
+                <span class="section-label shortcut-hint" style="font-weight: 400; text-transform: none;">Shift+Enter to Run</span>
+            </div>
+            
+            <textarea 
+                id="input-area" 
+                placeholder="% Type commands here..."
+                spellcheck="false"
+                autocapitalize="off"
+                autocomplete="off"
+            ></textarea>
+
+            <button onclick="runCalculation()" class="fab">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+            </button>
+        </section>
+
+        <!-- Output Section with Tabs -->
+        <section class="panel output-panel">
+            <div class="section-header" style="padding:0;">
+                <div class="tabs">
+                    <button class="tab-btn active" onclick="switchTab('console')">Console</button>
+                    <button class="tab-btn" onclick="switchTab('graph')">Graph</button>
+                </div>
+            </div>
+            
+            <div id="output-area" class="output-content">
+                <div class="info-line">Loading libraries...</div>
+            </div>
+            <div id="graphs-container" class="hidden"></div>
+        </section>
+    </main>
+
+    <!-- Cheatsheet Modal -->
+    <dialog id="help-modal">
+        <div class="modal-header">
+            <h2 style="margin:0; font-size:1.125rem;">Quick Reference Cheatsheet</h2>
+            <button onclick="closeCheatsheet()" class="btn btn-ghost" style="padding:0.25rem;">✕</button>
+        </div>
+        <div class="modal-body">
+            <div style="margin-bottom: 0.5rem; font-weight: 600; color: var(--text-muted); font-size: 0.8rem;">QUICK EXAMPLES</div>
+            <code class="code-block" id="help-code-block">
+# Plotting (MATLAB-style, auto-vectorized)
+x = range(0, 10, 0.5)
+y = sin(x)         # sin automatically works on arrays!
+plot(x, y)
+
+# MATLAB-style figure commands
+figure             # Start new figure
+x = range(0, 10, 0.2)
+plot(x, sin(x))
+hold on            # Add more to same figure (no parens needed!)
+plot(x, cos(x))
+legend('Sine Wave', 'Cosine Wave')  # Label traces
+title('Sine and Cosine')
+xlabel('X Axis')
+ylabel('Y Axis')
+
+# Element-wise operators (MATLAB-style)
+a = [1, 2, 3]
+b = [4, 5, 6]
+c = a .* b         # Element-wise multiply: [4, 10, 18]
+d = a ./ b         # Element-wise divide
+e = a .^ 2         # Element-wise power: [1, 4, 9]
+
+# Easy Date Math
+today = now(Denver)
+sDen = prettydate(today)
+printf("Denver   %s\n", sDen)
+
+# Three time zones at once
+ThreeZonesNow()    # Current time in Denver, Mechelen, Sydney
+
+# Phonetic Alphabet
+nato('Hello World')
+
+# Currency Conversion (works like unit conversion!)
+showrates()                  # Show current rates
+1 USD in EUR                 # Get USD to EUR rate
+100 USD in EUR               # Convert 100 USD to EUR
+50 GBP in AUD                # Convert 50 GBP to AUD
+price = 25.50 EUR            # Store currency value
+price in USD                 # Convert to USD
+
+# Timer and Stopwatch
+timer(3 minutes)             # Start 3-minute countdown timer
+timer(30 seconds)            # Start 30-second timer
+timerCancel()                # Cancel running timer
+stopwatchStart()             # Start stopwatch
+stopwatchStop()              # Stop and show elapsed time
+stopwatchReset()             # Reset stopwatch
+
+# Matrix Math
+a1 = identity(2,2)
+b1 = [1, 2; 3, 4]
+c1 = a1 * b1       # Matrix multiply
+c2 = a1 .* b1      # Element-wise multiply
+inv(c1)
+
+# Stop Execution - everything below 'exit' is ignored
+exit
+print("This will not run")
+            </code>
+        </div>
+    </dialog>
+
+    <script>
+        // --- JS Logic ---
+        let parser;
+        let graphCounter = 0; // Track number of graphs
+
+        // MATLAB-style figure state
+        let currentFigure = null;
+        let holdState = false;
+
+        // Exchange rate state
+        let exchangeRates = null;
+        const RATES_STORAGE_KEY = 'script_calc_exchange_rates';
+        const RATES_TIMESTAMP_KEY = 'script_calc_rates_timestamp';
+        const RATES_CACHE_DURATION = 3600000; // 1 hour in milliseconds
+        const FALLBACK_RATES = {
+            USD: 1.0,
+            EUR: 0.92,
+            GBP: 0.79,
+            AUD: 1.52
+        };
+
+        // Timer and stopwatch state
+        let timerInterval = null;
+        let timerEndTime = null;
+        let timerDisplay = null;
+        let stopwatchStartTime = null;
+        let stopwatchElapsed = 0;
+        let stopwatchInterval = null;
+        let stopwatchDisplay = null;
+
+        const inputArea = document.getElementById('input-area');
+        const outputArea = document.getElementById('output-area');
+        const graphsContainer = document.getElementById('graphs-container');
+        const helpModal = document.getElementById('help-modal');
+        const STORAGE_KEY = 'script_calc_code';
+
+        // Fetch exchange rates from API
+        async function fetchExchangeRates() {
+            try {
+                const response = await fetch('https://open.er-api.com/v6/latest/USD');
+                if (!response.ok) throw new Error('Network response was not ok');
+                const data = await response.json();
+
+                // Extract only the rates we need
+                const rates = {
+                    USD: 1.0,
+                    EUR: data.rates.EUR || FALLBACK_RATES.EUR,
+                    GBP: data.rates.GBP || FALLBACK_RATES.GBP,
+                    AUD: data.rates.AUD || FALLBACK_RATES.AUD
+                };
+
+                // Save to localStorage
+                localStorage.setItem(RATES_STORAGE_KEY, JSON.stringify(rates));
+                localStorage.setItem(RATES_TIMESTAMP_KEY, Date.now().toString());
+
+                exchangeRates = rates;
+                return rates;
+            } catch (error) {
+                console.warn('Failed to fetch exchange rates:', error);
+                // Try to load from localStorage
+                return loadCachedRates();
+            }
+        }
+
+        // Load rates from localStorage
+        function loadCachedRates() {
+            try {
+                const cached = localStorage.getItem(RATES_STORAGE_KEY);
+                if (cached) {
+                    exchangeRates = JSON.parse(cached);
+                    return exchangeRates;
+                }
+            } catch (e) {
+                console.warn('Failed to load cached rates:', e);
+            }
+            // Fall back to hardcoded rates
+            exchangeRates = { ...FALLBACK_RATES };
+            return exchangeRates;
+        }
+
+        // Get exchange rates (with caching)
+        async function getExchangeRates() {
+            // If we have rates in memory, check if they're still fresh
+            if (exchangeRates) {
+                const timestamp = localStorage.getItem(RATES_TIMESTAMP_KEY);
+                if (timestamp) {
+                    const age = Date.now() - parseInt(timestamp);
+                    if (age < RATES_CACHE_DURATION) {
+                        return exchangeRates;
+                    }
+                }
+            }
+
+            // Try to fetch fresh rates
+            return await fetchExchangeRates();
+        }
+
+        // Create currency units in math.js
+        function createCurrencyUnits() {
+            if (!exchangeRates) {
+                console.warn('Cannot create currency units: exchangeRates not loaded');
+                return false;
+            }
+            if (typeof math === 'undefined') {
+                console.warn('Cannot create currency units: math.js not loaded');
+                return false;
+            }
+
+            // Validate that we have all required rates
+            if (!exchangeRates.EUR || !exchangeRates.GBP || !exchangeRates.AUD) {
+                console.warn('Cannot create currency units: missing required rates', exchangeRates);
+                return false;
+            }
+
+            try {
+                // Delete existing units first if they exist
+                try {
+                    math.Unit.deleteUnit('USD');
+                    math.Unit.deleteUnit('usd');
+                    math.Unit.deleteUnit('EUR');
+                    math.Unit.deleteUnit('eur');
+                    math.Unit.deleteUnit('GBP');
+                    math.Unit.deleteUnit('gbp');
+                    math.Unit.deleteUnit('AUD');
+                    math.Unit.deleteUnit('aud');
+                } catch(e) { /* Units don't exist yet, that's ok */ }
+
+                // Create custom units for currencies based on current rates
+                // The API gives us: 1 USD = X EUR/GBP/AUD
+                // So we need to define: 1 EUR = (1/X) USD
+
+                // Define base unit first (1 USD = 1 USD)
+                math.createUnit('USD');
+                math.createUnit('usd', { definition: '1 USD' });
+
+                // Define other currencies with inverted rates
+                // If 1 USD = 0.8615 EUR, then 1 EUR = (1/0.8615) USD
+                math.createUnit('EUR', { definition: `${1/exchangeRates.EUR} USD` });
+                math.createUnit('eur', { definition: '1 EUR' });
+
+                math.createUnit('GBP', { definition: `${1/exchangeRates.GBP} USD` });
+                math.createUnit('gbp', { definition: '1 GBP' });
+
+                math.createUnit('AUD', { definition: `${1/exchangeRates.AUD} USD` });
+                math.createUnit('aud', { definition: '1 AUD' });
+
+                console.log('✓ Currency units created with rates:', exchangeRates);
+                return true;
+            } catch (e) {
+                console.error('✗ Error creating currency units:', e);
+                return false;
+            }
+        }
+
+        // Initialize rates on page load - load cached first for immediate availability
+        loadCachedRates();
+
+        // Then fetch fresh rates asynchronously
+        (async () => {
+            await getExchangeRates();
+            // Recreate currency units with fresh rates
+            const unitsCreated = createCurrencyUnits();
+            if (unitsCreated) {
+                console.log('✓ Fresh currency units loaded and ready to use');
+            } else {
+                console.error('✗ Failed to create currency units with fresh rates');
+            }
+        })();
+
+        // Helper function to render a figure
+        function renderFigure(figureData) {
+            if (!figureData || figureData.traces.length === 0) return null;
+
+            graphCounter++;
+            const graphId = 'graph-' + graphCounter;
+
+            // Create wrapper container with label
+            const wrapperDiv = document.createElement('div');
+            wrapperDiv.style.marginBottom = '2rem';
+
+            // Create label
+            const labelDiv = document.createElement('div');
+            labelDiv.style.fontWeight = '600';
+            labelDiv.style.fontSize = '0.875rem';
+            labelDiv.style.color = 'var(--text-main)';
+            labelDiv.style.marginBottom = '0.5rem';
+            labelDiv.style.paddingLeft = '0.25rem';
+            labelDiv.textContent = 'Graph ' + graphCounter;
+
+            // Create plot div
+            const plotDiv = document.createElement('div');
+            plotDiv.id = graphId;
+            plotDiv.style.width = '100%';
+            plotDiv.style.height = '450px';
+            plotDiv.className = 'js-plotly-plot';
+
+            // Assemble
+            wrapperDiv.appendChild(labelDiv);
+            wrapperDiv.appendChild(plotDiv);
+            graphsContainer.appendChild(wrapperDiv);
+
+            // Render
+            Plotly.newPlot(plotDiv, figureData.traces, figureData.layout);
+
+            return graphCounter;
+        }
+
+        // Create new figure state
+        function createNewFigure() {
+            return {
+                traces: [],
+                layout: {
+                    margin: { t: 40, r: 40, l: 40, b: 40 },
+                    title: '',
+                    xaxis: { title: '' },
+                    yaxis: { title: '' }
+                }
+            };
+        }
+
+        // Function to jump to a specific graph
+        window.jumpToGraph = function(graphId) {
+            switchTab('graph');
+            const graphDiv = document.getElementById(graphId);
+            if (graphDiv) {
+                setTimeout(() => {
+                    // Scroll to the wrapper (parent) to include the label
+                    const wrapper = graphDiv.parentElement;
+                    if (wrapper) {
+                        wrapper.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    } else {
+                        graphDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }, 100);
+            }
+        };
+
+        const DEFAULT_CODE = `# Plotting Example (MATLAB-style)
+figure
+x = range(0, 10, 0.1)
+plot(x, sin(x))     # Auto-vectorized!
+hold on             # Add more to same figure
+plot(x, cos(x))
+legend('sin(x)', 'cos(x)')
+title('Sine and Cosine Waves')
+xlabel('X values')
+ylabel('Y values')
+
+# Second separate plot
+figure
+t = range(0, 5, 0.1)
+plot(t, t .^ 2)
+title('Parabola')
+
+# Element-wise operations
+a = [1, 2, 3, 4]
+b = a .^ 2          # [1, 4, 9, 16]
+
+# Phonetic Alphabet
+nato('Hello World')
+
+# Exit Command
+exit
+# Code below here is ignored!
+print("This will not print")`;
+
+        // Diagnostic update function
+        window.updateStatus = function() {
+            if (window.scriptErrors.length > 0) {
+                outputArea.innerHTML = `
+                    <div class="diag-error">
+                        <strong>⚠️ Missing Files</strong><br>
+                        Could not load libraries (Online CDN or Local):<br>
+                        <ul style="margin:0.5rem 0 0.5rem 1.5rem; list-style:disc;">
+                            ${window.scriptErrors.map(s => `<li>${s}</li>`).join('')}
+                        </ul>
+                        <div style="margin-top:0.5rem; font-size:0.8rem; opacity:0.9;">
+                            Ensure <code>math.js</code>, <code>luxon.js</code>, and <code>plotly.min.js</code> are present.
+                        </div>
+                    </div>`;
+            }
+        };
+
+        // Tabs Logic
+        window.switchTab = function(tabName) {
+            const tabs = document.querySelectorAll('.tab-btn');
+            tabs.forEach(t => t.classList.remove('active'));
+            
+            if(tabName === 'console') {
+                tabs[0].classList.add('active');
+                outputArea.classList.remove('hidden');
+                graphsContainer.classList.add('hidden');
+            } else {
+                tabs[1].classList.add('active');
+                outputArea.classList.add('hidden');
+                graphsContainer.classList.remove('hidden');
+                
+                // Force resize on all plots when tab is shown
+                const plots = graphsContainer.querySelectorAll('.js-plotly-plot');
+                plots.forEach(p => Plotly.Plots.resize(p));
+            }
+        }
+
+        // Load saved code
+        window.addEventListener('load', () => {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            inputArea.value = saved !== null ? saved : DEFAULT_CODE;
+            
+            let attempts = 0;
+            const checkDeps = setInterval(() => {
+                attempts++;
+                if (typeof math !== 'undefined' && typeof luxon !== 'undefined' && typeof Plotly !== 'undefined') {
+                    clearInterval(checkDeps);
+                    initMath();
+                }
+                if (attempts > 50) {
+                    clearInterval(checkDeps);
+                    if (window.scriptErrors.length === 0) {
+                        outputArea.innerHTML = `<div class="diag-error">⚠️ Initialization Timeout</div>`;
+                    }
+                }
+            }, 100);
+        });
+
+        function initMath() {
+            const DateTime = luxon.DateTime;
+            const originalAdd = math.add;
+            const originalSubtract = math.subtract;
+
+            // Save references to original operators
+            const originalDotMultiply = math.dotMultiply;
+            const originalDotDivide = math.dotDivide;
+            const originalDotPow = math.dotPow;
+
+            // Helper: Auto-vectorize a function for arrays/matrices
+            function autoVectorize(fn) {
+                return function(x) {
+                    // Handle matrices by converting to array, processing, then back to matrix
+                    if (math.isMatrix(x)) {
+                        const arr = x.toArray();
+                        const result = Array.isArray(arr[0])
+                            ? arr.map(row => row.map(fn))  // 2D matrix
+                            : arr.map(fn);                   // 1D matrix/vector
+                        return math.matrix(result);
+                    }
+                    // Handle plain arrays
+                    if (Array.isArray(x)) {
+                        return x.map(val => Array.isArray(val) ? val.map(fn) : fn(val));
+                    }
+                    // Handle scalars
+                    return fn(x);
+                };
+            }
+
+            math.import({
+                floor: math.floor,
+                ceil: math.ceil,
+                round: math.round,
+                fix: math.fix,
+
+                // Element-wise operators (use saved originals)
+                dotMultiply: originalDotMultiply,
+                dotDivide: originalDotDivide,
+                dotPow: originalDotPow,
+
+                // Auto-vectorized math functions (MATLAB-like, using native JS Math for scalars)
+                sin: autoVectorize(Math.sin),
+                cos: autoVectorize(Math.cos),
+                tan: autoVectorize(Math.tan),
+                asin: autoVectorize(Math.asin),
+                acos: autoVectorize(Math.acos),
+                atan: autoVectorize(Math.atan),
+                sinh: autoVectorize(Math.sinh),
+                cosh: autoVectorize(Math.cosh),
+                tanh: autoVectorize(Math.tanh),
+                exp: autoVectorize(Math.exp),
+                log: autoVectorize(Math.log),
+                log10: autoVectorize(Math.log10),
+                log2: autoVectorize(Math.log2),
+                sqrt: autoVectorize(Math.sqrt),
+                abs: autoVectorize(Math.abs),
+                sign: autoVectorize(Math.sign),
+
+                // Map function for explicit mapping (backward compatibility)
+                map: function(arr, fn) {
+                    if (Array.isArray(arr)) return arr.map(fn);
+                    if (math.isMatrix(arr)) return math.map(arr, fn);
+                    return fn(arr);
+                },
+
+                // MATLAB-style figure commands
+                figure: function() {
+                    // Render current figure if exists
+                    if (currentFigure && currentFigure.traces.length > 0) {
+                        const num = renderFigure(currentFigure);
+                        if (num) {
+                            // Store result for later output
+                            currentFigure.renderedNumber = num;
+                        }
+                    }
+                    // Create new figure
+                    currentFigure = createNewFigure();
+                    holdState = false;
+                    return "";
+                },
+
+                hold: function(state) {
+                    if (!state || (typeof state === 'string' && state.toLowerCase() === 'off')) {
+                        holdState = false;
+                    } else if (typeof state === 'string' && state.toLowerCase() === 'on') {
+                        holdState = true;
+                        // Ensure we have a current figure
+                        if (!currentFigure) {
+                            currentFigure = createNewFigure();
+                        }
+                    }
+                    return "";
+                },
+
+                title: function(text) {
+                    if (!currentFigure) currentFigure = createNewFigure();
+                    currentFigure.layout.title = text;
+                    return "";
+                },
+
+                xlabel: function(text) {
+                    if (!currentFigure) currentFigure = createNewFigure();
+                    currentFigure.layout.xaxis.title = text;
+                    return "";
+                },
+
+                ylabel: function(text) {
+                    if (!currentFigure) currentFigure = createNewFigure();
+                    currentFigure.layout.yaxis.title = text;
+                    return "";
+                },
+
+                legend: function(...labels) {
+                    if (!currentFigure) currentFigure = createNewFigure();
+                    // Assign labels to traces sequentially
+                    labels.forEach((label, index) => {
+                        if (index < currentFigure.traces.length) {
+                            currentFigure.traces[index].name = label;
+                        }
+                    });
+                    return "";
+                },
+
+                // Plotting Function (MATLAB-style)
+                plot: function(arg1, arg2) {
+                    try {
+                        // Ensure we have a current figure
+                        if (!currentFigure) currentFigure = createNewFigure();
+
+                        // If not in hold mode and figure has traces, close current figure and start new one
+                        if (!holdState && currentFigure.traces.length > 0) {
+                            // Render current figure
+                            const num = renderFigure(currentFigure);
+                            // Start new figure
+                            currentFigure = createNewFigure();
+                            // We'll add the new plot to this new figure
+                        }
+
+                        // Case 1: plot(x, y) - Simple line chart
+                        if (arg1 && arg2 && (Array.isArray(arg1) || math.isMatrix(arg1)) && (Array.isArray(arg2) || math.isMatrix(arg2))) {
+                            const x = math.isMatrix(arg1) ? arg1.toArray() : arg1;
+                            const y = math.isMatrix(arg2) ? arg2.toArray() : arg2;
+                            const newTrace = { x: x, y: y, type: 'scatter', mode: 'lines' };
+                            currentFigure.traces.push(newTrace);
+                            return "";
+                        }
+                        // Case 2: plot([traces], layout) - Advanced (legacy support)
+                        else if (Array.isArray(arg1) || math.isMatrix(arg1)) {
+                            const tracesArray = math.isMatrix(arg1) ? arg1.toArray() : arg1;
+
+                            tracesArray.forEach(trace => {
+                                let newTrace = {...trace};
+                                Object.keys(newTrace).forEach(key => {
+                                    if(newTrace[key] && math.isMatrix(newTrace[key])) {
+                                        newTrace[key] = newTrace[key].toArray();
+                                    }
+                                });
+                                currentFigure.traces.push(newTrace);
+                            });
+
+                            if (arg2) currentFigure.layout = { ...currentFigure.layout, ...arg2 };
+                            return "";
+                        } else {
+                            return "Error: Invalid arguments for plot(). Use plot(x, y) or plot([traces], layout).";
+                        }
+                    } catch(e) { return "Plot Error: " + e.message; }
+                },
+
+                // Phonetic Alphabet Function
+                nato: function(input) {
+                    try {
+                        if (typeof input !== 'string') return "Error: Input must be a string. Usage: nato('text')";
+                        
+                        const phonetic = {
+                            'A': 'Alpha', 'B': 'Bravo', 'C': 'Charlie', 'D': 'Delta', 'E': 'Echo',
+                            'F': 'Foxtrot', 'G': 'Golf', 'H': 'Hotel', 'I': 'India', 'J': 'Juliett',
+                            'K': 'Kilo', 'L': 'Lima', 'M': 'Mike', 'N': 'November', 'O': 'Oscar',
+                            'P': 'Papa', 'Q': 'Quebec', 'R': 'Romeo', 'S': 'Sierra', 'T': 'Tango',
+                            'U': 'Uniform', 'V': 'Victor', 'W': 'Whiskey', 'X': 'X-ray',
+                            'Y': 'Yankee', 'Z': 'Zulu',
+                            '0': 'Zero', '1': 'One', '2': 'Two', '3': 'Three', '4': 'Four',
+                            '5': 'Five', '6': 'Six', '7': 'Seven', '8': 'Eight', '9': 'Nine'
+                        };
+
+                        return input.toUpperCase().split('').map(char => {
+                            if (phonetic[char]) return phonetic[char];
+                            if (char === ' ') return '(space)';
+                            return char;
+                        }).join(' ');
+                    } catch(e) { return "Error: " + e.message; }
+                },
+
+                toFeetInches: function(input) {
+                    try {
+                        if (!math.isUnit(input)) return "Error: Unit required";
+                        const feetVal = input.to('feet').toNumber('feet');
+                        const f = Math.floor(feetVal);
+                        const i = (feetVal - f) * 12;
+                        return `${f}' ${i.toFixed(2)}"`;
+                    } catch(e) { return "Error: " + e.message; }
+                },
+
+                prettydate: function(dateStr) {
+                    try {
+                        let dt;
+                        if (typeof dateStr === 'string') dt = DateTime.fromISO(dateStr, { setZone: true });
+                        if (!dt || !dt.isValid) return "Invalid Date";
+                        return dt.toFormat('yyyy_MM_dd_HHmm MMM dd hh:mma EEE');
+                    } catch(e) { return "Error"; }
+                },
+
+                ThreeZones: function(time_stamp) {
+                    try {
+                        const refDay = time_stamp;
+                        const sDen = math.prettydate(refDay);
+                        const sSyd = math.prettydate(math.toZone(refDay, 'Australia/Sydney'));
+                        const sMech = math.prettydate(math.toZone(refDay, 'Europe/Brussels'));
+                        return math.printf("Denver   %s\nMechelen %s\nSydney   %s\n", sDen, sMech, sSyd);
+                    } catch(e) { return "Error: " + e.message; }
+                },
+
+                ThreeZonesNow: function() {
+                    try {
+                        return math.ThreeZones(math.now());
+                    } catch(e) { return "Error: " + e.message; }
+                },
+
+                printf: function(template, ...args) {
+                    try {
+                        let i = 0;
+                        return template.replace(/%([0-9.]*)?([sdf])/g, (match, formatSpec, type) => {
+                            let val = args[i++];
+                            if (val === undefined) return match;
+                            if (type === 's' && typeof val === 'string') return val;
+                            if (formatSpec && formatSpec.startsWith('.')) {
+                                const prec = parseInt(formatSpec.substring(1));
+                                if (!isNaN(prec)) return math.format(val, { notation: 'fixed', precision: prec });
+                            }
+                            return math.format(val, { precision: 14 });
+                        });
+                    } catch(e) { return template; }
+                },
+
+                now: function (zone) {
+                    try {
+                        const z = zone ? zone : 'system';
+                        return DateTime.now().setZone(z).toISO({ suppressMilliseconds: true });
+                    } catch(e) { return "Invalid Zone"; }
+                },
+                date: function(dateStr) {
+                    try {
+                        const dt = DateTime.fromISO(dateStr);
+                        if (!dt.isValid) return "Invalid Date";
+                        return dt.toISO({ suppressMilliseconds: true });
+                    } catch(e) { return "Error"; }
+                },
+                dateDiff: function (d1, d2, unit) {
+                    try {
+                         const dt1 = DateTime.fromISO(d1);
+                         const dt2 = DateTime.fromISO(d2);
+                         return dt2.diff(dt1, unit).toObject()[unit] || 0;
+                    } catch(e) { return NaN; }
+                },
+                toZone: function (dateStr, zone) {
+                    try {
+                        const dt = DateTime.fromISO(dateStr);
+                        if (!dt.isValid) return "Invalid Date";
+                        return dt.setZone(zone).toISO({ suppressMilliseconds: true });
+                    } catch(e) { return "Error"; }
+                },
+                add: function(a, b) {
+                    if (typeof a === 'string' && math.isUnit(b)) {
+                        const dt = DateTime.fromISO(a);
+                        if (dt.isValid) return dt.plus({ milliseconds: b.toNumber('ms') }).toISO({ suppressMilliseconds: true });
+                    }
+                    if (math.isUnit(a) && typeof b === 'string') {
+                        const dt = DateTime.fromISO(b);
+                        if (dt.isValid) return dt.plus({ milliseconds: a.toNumber('ms') }).toISO({ suppressMilliseconds: true });
+                    }
+                    return originalAdd(a, b);
+                },
+                subtract: function(a, b) {
+                     if (typeof a === 'string' && math.isUnit(b)) {
+                        const dt = DateTime.fromISO(a);
+                        if (dt.isValid) return dt.minus({ milliseconds: b.toNumber('ms') }).toISO({ suppressMilliseconds: true });
+                    }
+                    if (typeof a === 'string' && typeof b === 'string') {
+                        const dt1 = DateTime.fromISO(a);
+                        const dt2 = DateTime.fromISO(b);
+                        if (dt1.isValid && dt2.isValid) {
+                            const diff = dt1.diff(dt2, ['years', 'months', 'weeks', 'days', 'hours', 'minutes']);
+                            const obj = diff.toObject();
+                            let parts = [];
+                            if (Math.abs(obj.years) >= 1) parts.push(`${Math.floor(Math.abs(obj.years))} years`);
+                            if (Math.abs(obj.months) >= 1) parts.push(`${Math.floor(Math.abs(obj.months))} months`);
+                            if (Math.abs(obj.weeks) >= 1) parts.push(`${Math.floor(Math.abs(obj.weeks))} weeks`);
+                            if (Math.abs(obj.days) >= 1) parts.push(`${Math.floor(Math.abs(obj.days))} days`);
+                            if (Math.abs(obj.hours) >= 1) parts.push(`${Math.floor(Math.abs(obj.hours))} hours`);
+                            if (Math.abs(obj.minutes) >= 1) parts.push(`${Math.floor(Math.abs(obj.minutes))} minutes`);
+                            if (parts.length === 0) return "less than 1 minute";
+                            return parts.join(', ');
+                        }
+                    }
+                    return originalSubtract(a, b);
+                },
+
+                // Exchange rate display function
+                showrates: function() {
+                    try {
+                        if (!exchangeRates) {
+                            return "Exchange rates not loaded yet.";
+                        }
+                        const timestamp = localStorage.getItem(RATES_TIMESTAMP_KEY);
+                        let ageStr = '';
+                        if (timestamp) {
+                            const ageMinutes = Math.floor((Date.now() - parseInt(timestamp)) / 60000);
+                            ageStr = ageMinutes < 60
+                                ? ` (${ageMinutes} min old)`
+                                : ` (${Math.floor(ageMinutes / 60)}h ${ageMinutes % 60}m old)`;
+                        }
+                        return `Exchange Rates (1 USD)${ageStr}:\n` +
+                               `  EUR: ${exchangeRates.EUR.toFixed(4)}\n` +
+                               `  GBP: ${exchangeRates.GBP.toFixed(4)}\n` +
+                               `  AUD: ${exchangeRates.AUD.toFixed(4)}`;
+                    } catch(e) { return "Error: " + e.message; }
+                },
+
+                // Refresh currency units (useful if conversions aren't working)
+                refreshcurrency: function() {
+                    try {
+                        const success = createCurrencyUnits();
+                        if (success) {
+                            // Test if units actually work
+                            try {
+                                const test = math.evaluate('1 USD');
+                                return "✓ Currency units refreshed successfully. Test: " + test.toString();
+                            } catch(testErr) {
+                                return "⚠️ Units created but test failed: " + testErr.message;
+                            }
+                        } else {
+                            return "✗ Failed to refresh currency units. Check console for details.";
+                        }
+                    } catch(e) {
+                        return "Error: " + e.message;
+                    }
+                },
+
+                // Diagnostic function to check currency unit status
+                checkcurrency: function() {
+                    let status = "Currency System Diagnostics:\n";
+                    status += `  Exchange rates loaded: ${exchangeRates ? 'YES' : 'NO'}\n`;
+                    if (exchangeRates) {
+                        status += `    EUR: ${exchangeRates.EUR}\n`;
+                        status += `    GBP: ${exchangeRates.GBP}\n`;
+                        status += `    AUD: ${exchangeRates.AUD}\n`;
+                    }
+                    status += `\n  Unit Tests:\n`;
+                    try {
+                        math.evaluate('1 USD');
+                        status += `    USD: ✓ Working\n`;
+                    } catch(e) { status += `    USD: ✗ ${e.message}\n`; }
+                    try {
+                        math.evaluate('1 EUR');
+                        status += `    EUR: ✓ Working\n`;
+                    } catch(e) { status += `    EUR: ✗ ${e.message}\n`; }
+                    try {
+                        math.evaluate('1 GBP');
+                        status += `    GBP: ✓ Working\n`;
+                    } catch(e) { status += `    GBP: ✗ ${e.message}\n`; }
+                    try {
+                        math.evaluate('1 AUD');
+                        status += `    AUD: ✓ Working\n`;
+                    } catch(e) { status += `    AUD: ✗ ${e.message}\n`; }
+                    return status;
+                },
+
+                // Timer functions
+                timer: function(duration) {
+                    try {
+                        // Cancel existing timer
+                        if (timerInterval) {
+                            clearInterval(timerInterval);
+                            if (timerDisplay) timerDisplay.remove();
+                        }
+
+                        // Get duration in milliseconds
+                        let ms;
+                        if (math.isUnit(duration)) {
+                            ms = duration.toNumber('ms');
+                        } else if (typeof duration === 'number') {
+                            ms = duration * 1000; // Assume seconds
+                        } else {
+                            return "Error: timer() requires a time unit (e.g., timer(3 minutes))";
+                        }
+
+                        timerEndTime = Date.now() + ms;
+
+                        // Create display element
+                        timerDisplay = document.createElement('div');
+                        timerDisplay.style.cssText = 'position: fixed; top: 20px; right: 20px; background: var(--primary); color: white; padding: 1rem 1.5rem; border-radius: 8px; font-size: 1.5rem; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 1000; font-family: var(--font-mono);';
+                        document.body.appendChild(timerDisplay);
+
+                        // Update display
+                        const updateTimer = () => {
+                            const remaining = timerEndTime - Date.now();
+                            if (remaining <= 0) {
+                                clearInterval(timerInterval);
+                                timerDisplay.textContent = '⏰ TIME\'S UP!';
+                                timerDisplay.style.background = '#dc2626';
+                                // Play alert sound
+                                const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuFzvDiimMOGVqz6+OoWBkMQ6z0yoVECBFi0N+mYBwGNIzV8ct4LQUtfMnw3Y9ACBNRXL7o56lWGAo9n+DywHYjBCSG0O/jjGUPGWC26uqnWBkKQK7wyYVGCBBlz9yqYR0GNIvT8sx5LwUufMnw3Y9ACBNRXL7o56lWGAo9n+DywHYjBCSG0O/jjGUPGWC26uqnWBkKP67wyYVGCBBlz9yqYR0GM4vT8sx5LwUufMnw3Y9ACBNRXL7o56lWGAo9n+DywHYjBCSG0O/jjGUPGWC26uqnWBkKP67wyYVGCBBlz9yqYR0GM4vT8sx5LwUufMnw3Y9ACBNRXL7o56lWGAo9n+DywHYjBCSG0O/jjGUPGWC26uqnWBkKP67wyYVGCBBlz9yqYR0GM4vT8sx5LwUufMnw3Y9ACBNRXL7o56lWGAo9n+DywHYjBCSG0O/jjGUPGWC26uqnWBkKP67wyYVGCBBlz9yqYR0GM4vT8sx5LwUufMnw3Y9ACBNRXL7o56lWGAo9n+DywHYjBCSG0O/jjGUPGWC26uqnWBkKP67wyYVGCBBlz9yqYR0GM4vT8sx5LwUufMnw3Y9ACBNRXL7o56lWGAo9n+DywHYjBCSG0O/jjGUPGWC26uqnWBkKP67wyYVGCBBlz9yqYR0GM4vT8sx5LwUufMnw3Y9ACBNRXL7o56lWGAo9n+DywHYjBCSG0O/jjGUPGWC26uqnWBkKP67wyYVGCBBlz9yqYR0GM4vT8sx5LwUufMnw3Y9ACBNRXL7o56lWGAo9n+DywHYjBCSG0O/jjGUPGWC26uqnWBkKP67wyYVGCBBlz9yqYR0GM4vT8sx5LwUufMnw3Y9ACBNRXL7o56lWGAo9n+DywHYjBCSG0O/jjGUPGWC26uqnWBkKP67wyYVGCBBlz9yqYR0GM4vT8sx5LwUufMnw3Y9ACBNRXL7o56lWGAo9n+DywHYjBCSG0O/jjGUPGWC26uqnWBkKP67wyYVGCBBlz9yqYR0GM4vT8sx5LwUu');
+                                audio.play().catch(e => console.log('Audio play failed:', e));
+                                // Remove after 3 seconds
+                                setTimeout(() => {
+                                    if (timerDisplay) timerDisplay.remove();
+                                    timerDisplay = null;
+                                }, 3000);
+                                timerInterval = null;
+                                return;
+                            }
+
+                            const seconds = Math.floor(remaining / 1000);
+                            const minutes = Math.floor(seconds / 60);
+                            const hours = Math.floor(minutes / 60);
+
+                            if (hours > 0) {
+                                timerDisplay.textContent = `⏱️ ${hours}:${String(minutes % 60).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
+                            } else if (minutes > 0) {
+                                timerDisplay.textContent = `⏱️ ${minutes}:${String(seconds % 60).padStart(2, '0')}`;
+                            } else {
+                                timerDisplay.textContent = `⏱️ ${seconds}s`;
+                            }
+                        };
+
+                        updateTimer();
+                        timerInterval = setInterval(updateTimer, 100);
+
+                        return `Timer started for ${Math.floor(ms / 1000)} seconds`;
+                    } catch(e) { return "Error: " + e.message; }
+                },
+
+                timerCancel: function() {
+                    if (timerInterval) {
+                        clearInterval(timerInterval);
+                        timerInterval = null;
+                    }
+                    if (timerDisplay) {
+                        timerDisplay.remove();
+                        timerDisplay = null;
+                    }
+                    return "Timer cancelled";
+                },
+
+                // Stopwatch functions
+                stopwatchStart: function() {
+                    if (stopwatchInterval) {
+                        return "Stopwatch already running. Use stopwatchStop() first.";
+                    }
+
+                    stopwatchStartTime = Date.now() - stopwatchElapsed;
+
+                    // Create display element
+                    if (!stopwatchDisplay) {
+                        stopwatchDisplay = document.createElement('div');
+                        stopwatchDisplay.style.cssText = 'position: fixed; top: 80px; right: 20px; background: #059669; color: white; padding: 1rem 1.5rem; border-radius: 8px; font-size: 1.5rem; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 1000; font-family: var(--font-mono);';
+                        document.body.appendChild(stopwatchDisplay);
+                    }
+
+                    const updateStopwatch = () => {
+                        const elapsed = Date.now() - stopwatchStartTime;
+                        stopwatchElapsed = elapsed;
+
+                        const ms = Math.floor(elapsed % 1000 / 10);
+                        const seconds = Math.floor(elapsed / 1000) % 60;
+                        const minutes = Math.floor(elapsed / 60000) % 60;
+                        const hours = Math.floor(elapsed / 3600000);
+
+                        if (hours > 0) {
+                            stopwatchDisplay.textContent = `⏱️ ${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(ms).padStart(2, '0')}`;
+                        } else {
+                            stopwatchDisplay.textContent = `⏱️ ${minutes}:${String(seconds).padStart(2, '0')}.${String(ms).padStart(2, '0')}`;
+                        }
+                    };
+
+                    updateStopwatch();
+                    stopwatchInterval = setInterval(updateStopwatch, 50);
+
+                    return "Stopwatch started";
+                },
+
+                stopwatchStop: function() {
+                    if (!stopwatchInterval) {
+                        return "Stopwatch not running";
+                    }
+
+                    clearInterval(stopwatchInterval);
+                    stopwatchInterval = null;
+
+                    const elapsed = stopwatchElapsed;
+                    const seconds = Math.floor(elapsed / 1000);
+                    const minutes = Math.floor(seconds / 60);
+                    const hours = Math.floor(minutes / 60);
+
+                    let timeStr = '';
+                    if (hours > 0) {
+                        timeStr = `${hours}h ${minutes % 60}m ${seconds % 60}s`;
+                    } else if (minutes > 0) {
+                        timeStr = `${minutes}m ${seconds % 60}s`;
+                    } else {
+                        timeStr = `${seconds}.${String(Math.floor(elapsed % 1000 / 10)).padStart(2, '0')}s`;
+                    }
+
+                    return `Stopwatch stopped at ${timeStr}`;
+                },
+
+                stopwatchReset: function() {
+                    if (stopwatchInterval) {
+                        clearInterval(stopwatchInterval);
+                        stopwatchInterval = null;
+                    }
+                    if (stopwatchDisplay) {
+                        stopwatchDisplay.remove();
+                        stopwatchDisplay = null;
+                    }
+                    stopwatchElapsed = 0;
+                    stopwatchStartTime = null;
+                    return "Stopwatch reset";
+                }
+            }, { override: true });
+
+            // Create currency units after math.js is set up
+            const initialUnitsCreated = createCurrencyUnits();
+            if (!initialUnitsCreated) {
+                console.warn('⚠️ Currency units not created during initialization. Will retry after fetching rates.');
+            }
+
+            parser = math.parser();
+            runCalculation(); 
+        }
+
+        inputArea.addEventListener('input', () => localStorage.setItem(STORAGE_KEY, inputArea.value));
+        inputArea.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && e.shiftKey) {
+                e.preventDefault();
+                runCalculation();
+            }
+        });
+
+        function showCheatsheet() { helpModal.showModal(); }
+        function closeCheatsheet() { helpModal.close(); }
+
+        function showFullHelp() {
+            const helpContent = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ScriptCalc - Complete Help & Documentation</title>
+    <style>
+        body { font-family: system-ui, -apple-system, sans-serif; max-width: 1200px; margin: 0 auto; padding: 2rem; line-height: 1.6; background: #f8fafc; }
+        h1 { color: #4f46e5; border-bottom: 3px solid #4f46e5; padding-bottom: 0.5rem; }
+        h2 { color: #4338ca; margin-top: 2rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 0.3rem; }
+        h3 { color: #6366f1; margin-top: 1.5rem; }
+        pre { background: #1e293b; color: #e2e8f0; padding: 1rem; border-radius: 6px; overflow-x: auto; font-size: 0.9rem; line-height: 1.5; }
+        code { background: #e2e8f0; color: #1e293b; padding: 0.2rem 0.4rem; border-radius: 3px; font-size: 0.9em; }
+        pre code { background: transparent; color: inherit; padding: 0; }
+        .note { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 1rem; margin: 1rem 0; border-radius: 4px; }
+        .tip { background: #dcfce7; border-left: 4px solid #10b981; padding: 1rem; margin: 1rem 0; border-radius: 4px; }
+        .warning { background: #fee2e2; border-left: 4px solid #ef4444; padding: 1rem; margin: 1rem 0; border-radius: 4px; }
+        .copy-btn { background: #4f46e5; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; margin-bottom: 1rem; }
+        .copy-btn:hover { background: #4338ca; }
+    </style>
+</head>
+<body>
+    <h1>📘 ScriptCalc Complete Help & Documentation</h1>
+    <p><strong>ScriptCalc</strong> is a browser-based scientific calculator with MATLAB-style syntax, supporting math operations, plotting, date/time handling, currency conversion, and more.</p>
+
+    <div class="tip">
+        <strong>💡 Tip:</strong> You can copy and paste any code block from this page directly into ScriptCalc!
+    </div>
+
+    <button class="copy-btn" onclick="copyAllExamples()">📋 Copy All Examples</button>
+
+    <h2>📊 Plotting (MATLAB-Style)</h2>
+
+    <h3>Simple Plotting</h3>
+    <pre><code># Auto-vectorized functions - sin/cos work on arrays!
+figure()
+x = range(0, 10, 0.5)
+y = sin(x)
+plot(x, y)
+title('y = sin(x)')
+xlabel('X')
+ylabel('Y')</code></pre>
+
+    <h3>Multiple Traces with hold on</h3>
+    <pre><code># Hold on to add multiple plots to same figure
+figure()
+t = range(0, 20, 0.2)
+y2 = sin(t)
+y3 = cos(t)
+plot(t, y2)
+hold on
+plot(t, y3)
+hold off
+legend('Sine', 'Cosine')
+title('sin(t) and cos(t)')
+xlabel('Time (t)')
+ylabel('Amplitude')</code></pre>
+
+    <h3>Advanced Plot with Custom Traces</h3>
+    <pre><code># Direct Plotly trace specification
+figure()
+t = range(0, 20, 0.2)
+trace1 = {x: t, y: sin(t), name: 'Sine', type: 'scatter'}
+trace2 = {x: t, y: cos(t), name: 'Cosine', type: 'bar'}
+plot([trace1, trace2], {title: 'Mixed Plot'})</code></pre>
+
+    <h2>📅 Date & Time Operations</h2>
+
+    <h3>Current Time in Multiple Zones</h3>
+    <pre><code># Predefined zones: Denver, Sydney, Mechelen
+today = now(Denver)
+ThreeZonesNow()
+
+# Specific time in all three zones
+refDay = today
+ThreeZones(refDay + 1 day)</code></pre>
+
+    <h3>Date Formatting and Conversion</h3>
+    <pre><code># Pretty date formatting
+sDen = prettydate(refDay)
+sSyd = prettydate(toZone(refDay, Sydney))
+sMech = prettydate(toZone(refDay, Mechelen))
+
+# Formatted output
+printf("Denver   %s\\nMechelen %s\\nSydney   %s\\n", sDen, sMech, sSyd)</code></pre>
+
+    <h3>Date Arithmetic</h3>
+    <pre><code># Date differences
+NewYearsDay = "2026-01-01T00:00:01.000-07:00"
+StophYOB = "1971-01-01T00:00:01.000-05:00"
+age = now() - StophYOB
+
+# Date addition
+next_week = today + 1 week
+tomorrow = today + 1 day
+in_30_minutes = now() + 30 minutes</code></pre>
+
+    <h2>⏱️ Timer & Stopwatch</h2>
+
+    <h3>Countdown Timer</h3>
+    <pre><code># Natural time units
+timer(3 minutes)
+timer(30 seconds)
+timer(1 hour)
+timer(90)          # Assumes seconds
+
+# Cancel timer
+timerCancel()</code></pre>
+
+    <h3>Stopwatch</h3>
+    <pre><code># Start/stop/reset
+stopwatchStart()   # Start timing
+stopwatchStop()    # Stop and show elapsed
+stopwatchReset()   # Reset to zero</code></pre>
+
+    <h2>🔢 Matrix Operations</h2>
+
+    <h3>Matrix Creation and Operations</h3>
+    <pre><code># Identity matrix
+a1 = identity(2, 2)
+
+# Manual matrix creation
+b1 = [1, 2; 3, 4]
+
+# Matrix multiplication
+c1 = a1 * b1
+
+# Matrix inversion
+inv(c1)
+
+# Verify: inv(c1) * c1 = identity
+inv(c1) * c1</code></pre>
+
+    <h3>Element-wise Operations (MATLAB-style)</h3>
+    <pre><code># Element-wise operators
+a = [1, 2, 3, 4]
+b = [2, 3, 4, 5]
+
+c = a .* b         # Element-wise multiply: [2, 6, 12, 20]
+d = a ./ b         # Element-wise divide
+e = a .^ 2         # Element-wise power: [1, 4, 9, 16]
+f = sin(a)         # Auto-vectorized: sin of each element</code></pre>
+
+    <h2>💱 Currency Conversion</h2>
+
+    <h3>Exchange Rates</h3>
+    <pre><code># Show current rates (cached for 1 hour)
+showrates()
+
+# Natural conversion syntax (like temperature!)
+1 USD in EUR
+100 USD in GBP
+50 GBP in AUD
+100 EUR in USD
+
+# Store and convert
+price = 25.50 EUR
+price in USD</code></pre>
+
+    <h2>📏 Unit Conversions</h2>
+
+    <h3>Length, Temperature, Volume</h3>
+    <pre><code># Length
+1 kg in lbs
+height = 180 cm
+height in feet
+
+# Temperature
+25 degC in degF
+-40 degC in degF
+98.6 degF in degC
+
+# Volume
+3 teaspoons in ml
+2 gallons in liters</code></pre>
+
+    <h3>Custom Unit Functions</h3>
+    <pre><code># Feet and inches conversion
+height = 180 cm
+formatted = toFeetInches(height)
+
+# Manual calculation
+height_ft = 180 / (2.54 * 12)
+height_ft2 = floor(height_ft)
+height_in2 = round((height_ft - floor(height_ft)) * 12)
+printf("%d ft %d in", height_ft2, height_in2)</code></pre>
+
+    <h2>🔤 String & Formatting</h2>
+
+    <h3>NATO Phonetic Alphabet</h3>
+    <pre><code># Convert text to NATO phonetic
+nato('A')
+nato("Christopher Joseph Long")
+nato('SOS')</code></pre>
+
+    <h3>Formatted Output</h3>
+    <pre><code># printf formatting
+name = "Stoph"
+age = 54
+printf("User %s is %d years old\\n", name, age)
+
+# Number formatting
+val = 12.345678
+format(val, 3)                                    # "12.3"
+format(val, {precision: 2, notation: "fixed"})    # "12.35"
+
+# Pretty date
+prettydate(now())</code></pre>
+
+    <h2>🧮 Mathematics</h2>
+
+    <h3>Basic Operations</h3>
+    <pre><code># Standard math
+sqrt(2) / pi
+round(sin(pi))
+1e6 / 978
+
+# Logarithms
+log(100, 10)       # log base 10
+log(256, 2)        # log base 2
+log(e)             # Natural log (ln)
+
+# Trigonometry on arrays (auto-vectorized!)
+angles = range(0, pi, 0.1)
+sines = sin(angles)
+cosines = cos(angles)</code></pre>
+
+    <h3>Special Functions (CIC4 Units)</h3>
+    <pre><code># Charge calculations
+CurrentuA = CL2uAzp(255)
+uAzp2CL(1750)
+PWusec = 25
+Charge_nC = CurrentuA * PWusec * 1e-6 * 1e-6 * 1e9</code></pre>
+
+    <h2>🎯 Advanced Features</h2>
+
+    <h3>Variables and Scope</h3>
+    <pre><code># Variables persist between commands
+x = 10
+y = x * 2
+z = y + x          # z = 30
+
+# Suppress output with semicolon
+a = 100;           # No output
+b = 200            # Shows: 200</code></pre>
+
+    <h3>Comments</h3>
+    <pre><code># Single line comment with #
+% Alternative comment with %
+
+x = 5  # Inline comment</code></pre>
+
+    <h3>Exit Command</h3>
+    <pre><code># Stop execution at this line
+exit
+
+# Everything below exit is ignored
+print("This will not run")
+x = 100  # This won't execute</code></pre>
+
+    <h2>📚 Complete Example Session</h2>
+    <pre id="all-examples"><code># ========================================
+# SCRIPTCALC - COMPLETE EXAMPLE SESSION
+# Copy this entire block to test all features!
+# ========================================
+
+# --- PLOTTING ---
+figure()
+x = range(0, 10, 0.5)
+y = sin(x)
+plot(x, y)
+title('Sine Wave')
+xlabel('X')
+ylabel('sin(X)')
+
+figure()
+t = range(0, 10, 0.2)
+plot(t, sin(t))
+hold on
+plot(t, cos(t))
+legend('sin(t)', 'cos(t)')
+title('Trig Functions')
+
+# --- DATE & TIME ---
+today = now(Denver)
+ThreeZonesNow()
+
+refDay = today
+sDen = prettydate(refDay)
+printf("Denver: %s\\n", sDen)
+
+next_week = today + 1 week
+age_days = now() - "1971-01-01T00:00:01.000-05:00"
+
+# --- TIMER & STOPWATCH ---
+# timer(30 seconds)    # Uncomment to test
+# timerCancel()
+# stopwatchStart()
+# stopwatchStop()
+# stopwatchReset()
+
+# --- MATRIX MATH ---
+a1 = identity(2, 2)
+b1 = [1, 2; 3, 4]
+c1 = a1 * b1
+inv(c1)
+
+# Element-wise operations
+a = [1, 2, 3, 4]
+b = a .^ 2
+c = a .* [2, 2, 2, 2]
+
+# --- CURRENCY ---
+showrates()
+100 USD in EUR
+50 GBP in AUD
+
+# --- UNIT CONVERSIONS ---
+1 kg in lbs
+25 degC in degF
+height = 180 cm
+toFeetInches(height)
+
+# --- NATO PHONETIC ---
+nato('HELP')
+
+# --- FORMATTING ---
+name = "ScriptCalc"
+version = 1.9
+printf("%s v%.1f is awesome!\\n", name, version)
+
+val = 12.345678
+format(val, 3)
+
+# --- MATH ---
+sqrt(2) / pi
+log(100, 10)
+log(256, 2)
+
+# --- SPECIAL FUNCTIONS ---
+CurrentuA = CL2uAzp(255)
+uAzp2CL(1750)
+
+exit
+# Code below exit is ignored
+print("This won't run")</code></pre>
+
+    <h2>💡 Tips & Tricks</h2>
+    <div class="tip">
+        <strong>Auto-vectorization:</strong> Math functions automatically work on arrays! No need for <code>map()</code>.
+    </div>
+    <div class="tip">
+        <strong>Natural syntax:</strong> Use <code>in</code> for conversions: <code>100 USD in EUR</code>, <code>25 degC in degF</code>
+    </div>
+    <div class="tip">
+        <strong>Hold state:</strong> Use <code>hold on</code> (no quotes!) to add multiple plots to the same figure.
+    </div>
+    <div class="tip">
+        <strong>Suppress output:</strong> End commands with <code>;</code> to suppress console output.
+    </div>
+    <div class="note">
+        <strong>Cached data:</strong> Exchange rates are cached for 1 hour. Currency conversions work offline with last cached rates.
+    </div>
+    <div class="warning">
+        <strong>Timer/Stopwatch:</strong> Only one timer and one stopwatch can run at a time. Start a new one to cancel the previous.
+    </div>
+
+    <h2>⌨️ Keyboard Shortcuts</h2>
+    <ul>
+        <li><strong>Shift + Enter:</strong> Run code</li>
+        <li><strong>Semicolon (;):</strong> Suppress output for that line</li>
+        <li><strong>exit:</strong> Stop execution at that line</li>
+    </ul>
+
+    <script>
+        function copyAllExamples() {
+            const code = document.getElementById('all-examples').textContent;
+            navigator.clipboard.writeText(code).then(() => {
+                alert('✓ All examples copied to clipboard! Paste into ScriptCalc input.');
+            });
+        }
+    <\/script>
+</body>
+</html>`;
+
+            const helpWindow = window.open('', '_blank');
+            helpWindow.document.write(helpContent);
+            helpWindow.document.close();
+        }
+
+        helpModal.addEventListener('click', (e) => {
+            const rect = helpModal.getBoundingClientRect();
+            if (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) helpModal.close();
+        });
+
+        function clearAll() {
+            if(confirm('Clear all code?')) {
+                inputArea.value = '';
+                localStorage.setItem(STORAGE_KEY, '');
+                outputArea.innerHTML = '<div class="info-line">Ready.</div>';
+                inputArea.focus();
+            }
+        }
+
+        function formatMatrix(matrixObj) {
+            try {
+                const size = matrixObj.size();
+                if (size.length > 2 || size[0] > 20 || size[1] > 20) return null;
+                const arr = matrixObj.toArray();
+                let html = '<div style="display:inline-block; background:rgba(226,232,240,0.5); border-radius:4px; padding:4px 8px; vertical-align:top; color:#334155;">';
+                arr.forEach((row, i) => {
+                    html += '<div style="display:flex; gap:1rem;">';
+                    if (Array.isArray(row)) {
+                        row.forEach(val => {
+                             let s = math.format(val, { precision: 5, lowerExp: -5, upperExp: 5 });
+                             html += `<span style="flex:1; text-align:right;">${s}</span>`;
+                        });
+                    } else {
+                        let s = math.format(row, { precision: 5 });
+                        html += `<span style="flex:1; text-align:right;">${s}</span>`;
+                    }
+                    html += '</div>';
+                });
+                html += '</div>';
+                return html;
+            } catch(e) { return null; }
+        }
+
+        function preloadScopeFunctions() {
+            try {
+                parser.evaluate("CL2uAzp(CL) = CL == 0 ? 0 : 17.5 * 100^(CL/255)");
+                parser.evaluate("uAzp2CL(I) = I == 0 ? 0 : 255 * log10(I/17.5) / 2");
+                parser.evaluate("Sydney = 'Australia/Sydney'");
+                parser.evaluate("Mechelen = 'Europe/Brussels'");
+                parser.evaluate("Denver = 'America/Denver'");
+            } catch (e) { console.error("Failed to load default functions", e); }
+        }
+
+        function runCalculation() {
+            if (typeof math === 'undefined' || typeof luxon === 'undefined') return;
+            const code = inputArea.value;
+            const lines = code.split('\n');
+            parser.clear();
+            preloadScopeFunctions();
+            outputArea.innerHTML = '';
+
+            // Clear previous graphs and reset state
+            graphsContainer.innerHTML = '';
+            graphCounter = 0;
+            currentFigure = null;
+            holdState = false;
+
+            let hasOutput = false;
+
+            // Updated to for...of loop to allow breaking
+            for (const line of lines) {
+                const trimmedLine = line.trim();
+
+                // Skip empty lines or comments
+                if (!trimmedLine || trimmedLine.startsWith('#') || trimmedLine.startsWith('%')) continue;
+
+                // EXIT COMMAND: Stop execution if encountered
+                if (trimmedLine.toLowerCase() === 'exit') {
+                    addOutputLine('Execution stopped by exit command.', 'info');
+                    break;
+                }
+
+                const suppressOutput = trimmedLine.endsWith(';');
+                let cleanLine = suppressOutput ? trimmedLine.slice(0, -1) : trimmedLine;
+
+                // Convert MATLAB-style commands without parentheses
+                // hold on -> hold('on'), hold off -> hold('off')
+                cleanLine = cleanLine.replace(/\bhold\s+on\b/gi, "hold('on')");
+                cleanLine = cleanLine.replace(/\bhold\s+off\b/gi, "hold('off')");
+
+                // Convert MATLAB-style operators to function calls
+                // Match patterns like: a .* b, [1,2] .* [3,4], etc.
+                cleanLine = cleanLine.replace(/([a-zA-Z_][\w]*(?:\[[^\]]*\])?|\[[^\]]*\]|\d+(?:\.\d+)?)\s*\.\*\s*([a-zA-Z_][\w]*(?:\[[^\]]*\])?|\[[^\]]*\]|\d+(?:\.\d+)?)/g, 'dotMultiply($1, $2)');
+                cleanLine = cleanLine.replace(/([a-zA-Z_][\w]*(?:\[[^\]]*\])?|\[[^\]]*\]|\d+(?:\.\d+)?)\s*\.\/\s*([a-zA-Z_][\w]*(?:\[[^\]]*\])?|\[[^\]]*\]|\d+(?:\.\d+)?)/g, 'dotDivide($1, $2)');
+                cleanLine = cleanLine.replace(/([a-zA-Z_][\w]*(?:\[[^\]]*\])?|\[[^\]]*\]|\d+(?:\.\d+)?)\s*\.\^\s*([a-zA-Z_][\w]*(?:\[[^\]]*\])?|\[[^\]]*\]|\d+(?:\.\d+)?)/g, 'dotPow($1, $2)');
+
+                try {
+                    const result = parser.evaluate(cleanLine);
+                    addOutputLine(trimmedLine, 'command');
+
+                    if (!suppressOutput && result !== undefined) {
+                        let outputHtml = '';
+                        if (result && result.isMatrix) outputHtml = formatMatrix(result);
+                        if (!outputHtml) {
+                            if (typeof result === 'string') {
+                                // Check for graph link marker
+                                const graphLinkMatch = result.match(/^GRAPH_LINK:(\d+)$/);
+                                if (graphLinkMatch) {
+                                    const graphNum = graphLinkMatch[1];
+                                    const graphId = 'graph-' + graphNum;
+                                    outputHtml = `<a href="javascript:void(0)" onclick="jumpToGraph('${graphId}')" style="color: var(--primary); text-decoration: underline; cursor: pointer; font-weight: 500;">Graph ${graphNum} generated</a>`;
+                                } else {
+                                    const safeResult = result.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                                    outputHtml = `<span class="result-val">${safeResult}</span>`;
+                                    if (result.match(/^\d{4}-\d{2}-\d{2}/)) {
+                                         const dt = luxon.DateTime.fromISO(result, { setZone: true });
+                                         if (dt && dt.isValid) {
+                                             const prettyDate = dt.toFormat('yyyy_MM_dd_HHmm MMM dd hh:mma EEE');
+                                             outputHtml += `<span class="pretty-date">${prettyDate}</span>`;
+                                         }
+                                    }
+                                }
+                            } else {
+                                try {
+                                    const formattedResult = math.format(result, { precision: 14 });
+                                    outputHtml = `<span class="result-val">${formattedResult}</span>`;
+                                } catch (e) { outputHtml = String(result); }
+                            }
+                        }
+                        addOutputLine(outputHtml, 'result', true);
+                        hasOutput = true;
+                    }
+                } catch (err) {
+                    addOutputLine(trimmedLine, 'command');
+                    addOutputLine(err.message, 'error');
+                    hasOutput = true;
+                }
+            } // end loop
+
+            // Render any pending figure at end of execution
+            if (currentFigure && currentFigure.traces.length > 0) {
+                const num = renderFigure(currentFigure);
+                if (num) {
+                    const graphId = 'graph-' + num;
+                    const outputHtml = `<a href="javascript:void(0)" onclick="jumpToGraph('${graphId}')" style="color: var(--primary); text-decoration: underline; cursor: pointer; font-weight: 500;">Graph ${num} generated</a>`;
+                    addOutputLine(outputHtml, 'result', true);
+                    hasOutput = true;
+                }
+                currentFigure = null;
+            }
+
+            if (!hasOutput && lines.some(l => l.trim().length > 0)) addOutputLine('Run complete.', 'info');
+            setTimeout(() => { outputArea.scrollTop = outputArea.scrollHeight; }, 10);
+        }
+
+        function addOutputLine(content, type, isHtml = false) {
+            const div = document.createElement('div');
+            div.className = 'output-line ' + (type === 'command' ? 'cmd-line' : type === 'error' ? 'err-line' : type === 'info' ? 'info-line' : 'res-line');
+            if (isHtml) div.innerHTML = content;
+            else {
+                if(type === 'command') div.innerText = '> ' + content;
+                else div.innerText = content;
+            }
+            outputArea.appendChild(div);
+        }
+    </script>
+</body>
+</html>
