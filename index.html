@@ -313,7 +313,6 @@ showrates()                  # Show current rates
 1 USD in EUR                 # Get USD to EUR rate
 100 USD in EUR               # Convert 100 USD to EUR
 50 GBP in AUD                # Convert 50 GBP to AUD
-100 USD in CAD               # Convert 100 USD to CAD
 price = 25.50 EUR            # Store currency value
 price in USD                 # Convert to USD
 
@@ -357,8 +356,7 @@ print("This will not run")
             USD: 1.0,
             EUR: 0.92,
             GBP: 0.79,
-            AUD: 1.52,
-            CAD: 1.36
+            AUD: 1.52
         };
 
         // Timer and stopwatch state
@@ -388,8 +386,7 @@ print("This will not run")
                     USD: 1.0,
                     EUR: data.rates.EUR || FALLBACK_RATES.EUR,
                     GBP: data.rates.GBP || FALLBACK_RATES.GBP,
-                    AUD: data.rates.AUD || FALLBACK_RATES.AUD,
-                    CAD: data.rates.CAD || FALLBACK_RATES.CAD
+                    AUD: data.rates.AUD || FALLBACK_RATES.AUD
                 };
 
                 // Save to localStorage
@@ -450,7 +447,7 @@ print("This will not run")
             }
 
             // Validate that we have all required rates
-            if (!exchangeRates.EUR || !exchangeRates.GBP || !exchangeRates.AUD || !exchangeRates.CAD) {
+            if (!exchangeRates.EUR || !exchangeRates.GBP || !exchangeRates.AUD) {
                 console.warn('Cannot create currency units: missing required rates', exchangeRates);
                 return false;
             }
@@ -466,12 +463,10 @@ print("This will not run")
                     math.Unit.deleteUnit('gbp');
                     math.Unit.deleteUnit('AUD');
                     math.Unit.deleteUnit('aud');
-                    math.Unit.deleteUnit('CAD');
-                    math.Unit.deleteUnit('cad');
                 } catch(e) { /* Units don't exist yet, that's ok */ }
 
                 // Create custom units for currencies based on current rates
-                // The API gives us: 1 USD = X EUR/GBP/AUD/CAD
+                // The API gives us: 1 USD = X EUR/GBP/AUD
                 // So we need to define: 1 EUR = (1/X) USD
 
                 // Define base unit first (1 USD = 1 USD)
@@ -488,9 +483,6 @@ print("This will not run")
 
                 math.createUnit('AUD', { definition: `${1/exchangeRates.AUD} USD` });
                 math.createUnit('aud', { definition: '1 AUD' });
-
-                math.createUnit('CAD', { definition: `${1/exchangeRates.CAD} USD` });
-                math.createUnit('cad', { definition: '1 CAD' });
 
                 console.log('✓ Currency units created with rates:', exchangeRates);
                 return true;
@@ -994,8 +986,7 @@ print("This will not print")`;
                         return `Exchange Rates (1 USD)${ageStr}:\n` +
                                `  EUR: ${exchangeRates.EUR.toFixed(4)}\n` +
                                `  GBP: ${exchangeRates.GBP.toFixed(4)}\n` +
-                               `  AUD: ${exchangeRates.AUD.toFixed(4)}\n` +
-                               `  CAD: ${exchangeRates.CAD.toFixed(4)}`;
+                               `  AUD: ${exchangeRates.AUD.toFixed(4)}`;
                     } catch(e) { return "Error: " + e.message; }
                 },
 
