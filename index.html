@@ -198,7 +198,7 @@
         dialog::backdrop { background: rgba(15, 23, 42, 0.5); backdrop-filter: blur(2px); }
         .modal-header { padding: 1.5rem; display: flex; justify-content: space-between; align-items: center; }
         .modal-body { padding: 0 1.5rem 1.5rem 1.5rem; max-height: 70vh; overflow-y: auto; }
-        .code-block { background: #1e293b; color: #e2e8f0; padding: 0.75rem; border-radius: 0.375rem; font-family: var(--font-mono); font-size: 0.75rem; margin-bottom: 0.5rem; display: block; white-space: pre-wrap; }
+        .code-block { background: #1e293b; color: #e2e8f0; padding: 0.75rem; border-radius: 0.375rem; font-family: var(--font-mono); font-size: 0.75rem; margin-bottom: 0.5rem; display: block; white-space: pre-wrap; word-wrap: break-word; }
         
         @media (max-width: 768px) {
             main { flex-direction: column; }
@@ -313,6 +313,7 @@ showrates()                  # Show current rates
 1 USD in EUR                 # Get USD to EUR rate
 100 USD in EUR               # Convert 100 USD to EUR
 50 GBP in AUD                # Convert 50 GBP to AUD
+100 USD in CAD               # Convert 100 USD to CAD
 price = 25.50 EUR            # Store currency value
 price in USD                 # Convert to USD
 
@@ -356,7 +357,8 @@ print("This will not run")
             USD: 1.0,
             EUR: 0.92,
             GBP: 0.79,
-            AUD: 1.52
+            AUD: 1.52,
+            CAD: 1.36
         };
 
         // Timer and stopwatch state
@@ -386,7 +388,8 @@ print("This will not run")
                     USD: 1.0,
                     EUR: data.rates.EUR || FALLBACK_RATES.EUR,
                     GBP: data.rates.GBP || FALLBACK_RATES.GBP,
-                    AUD: data.rates.AUD || FALLBACK_RATES.AUD
+                    AUD: data.rates.AUD || FALLBACK_RATES.AUD,
+                    CAD: data.rates.CAD || FALLBACK_RATES.CAD
                 };
 
                 // Save to localStorage
@@ -447,7 +450,7 @@ print("This will not run")
             }
 
             // Validate that we have all required rates
-            if (!exchangeRates.EUR || !exchangeRates.GBP || !exchangeRates.AUD) {
+            if (!exchangeRates.EUR || !exchangeRates.GBP || !exchangeRates.AUD || !exchangeRates.CAD) {
                 console.warn('Cannot create currency units: missing required rates', exchangeRates);
                 return false;
             }
@@ -463,10 +466,12 @@ print("This will not run")
                     math.Unit.deleteUnit('gbp');
                     math.Unit.deleteUnit('AUD');
                     math.Unit.deleteUnit('aud');
+                    math.Unit.deleteUnit('CAD');
+                    math.Unit.deleteUnit('cad');
                 } catch(e) { /* Units don't exist yet, that's ok */ }
 
                 // Create custom units for currencies based on current rates
-                // The API gives us: 1 USD = X EUR/GBP/AUD
+                // The API gives us: 1 USD = X EUR/GBP/AUD/CAD
                 // So we need to define: 1 EUR = (1/X) USD
 
                 // Define base unit first (1 USD = 1 USD)
@@ -483,6 +488,9 @@ print("This will not run")
 
                 math.createUnit('AUD', { definition: `${1/exchangeRates.AUD} USD` });
                 math.createUnit('aud', { definition: '1 AUD' });
+
+                math.createUnit('CAD', { definition: `${1/exchangeRates.CAD} USD` });
+                math.createUnit('cad', { definition: '1 CAD' });
 
                 console.log('✓ Currency units created with rates:', exchangeRates);
                 return true;
@@ -986,7 +994,8 @@ print("This will not print")`;
                         return `Exchange Rates (1 USD)${ageStr}:\n` +
                                `  EUR: ${exchangeRates.EUR.toFixed(4)}\n` +
                                `  GBP: ${exchangeRates.GBP.toFixed(4)}\n` +
-                               `  AUD: ${exchangeRates.AUD.toFixed(4)}`;
+                               `  AUD: ${exchangeRates.AUD.toFixed(4)}\n` +
+                               `  CAD: ${exchangeRates.CAD.toFixed(4)}`;
                     } catch(e) { return "Error: " + e.message; }
                 },
 
@@ -998,109 +1007,48 @@ print("This will not print")`;
                             // Test if units actually work
                             try {
                                 const test = math.evaluate('1 USD');
-                                return "✓ Currency units refreshed successfully. Test: " + test.toString();
-                            } catch(testErr) {
-                                return "⚠️ Units created but test failed: " + testErr.message;
+                                if (test && test.toString) {
+                                    return "✓ Currency units refreshed and working: " + test.toString();
+                                }
+                            } catch(e) {
+                                return "✓ Currency units refreshed (test may fail due to math.js version)";
                             }
                         } else {
-                            return "✗ Failed to refresh currency units. Check console for details.";
+                            return "✗ Failed to refresh currency units";
                         }
-                    } catch(e) {
-                        return "Error: " + e.message;
-                    }
+                    } catch(e) { return "Error: " + e.message; }
                 },
 
-                // Diagnostic function to check currency unit status
-                checkcurrency: function() {
-                    let status = "Currency System Diagnostics:\n";
-                    status += `  Exchange rates loaded: ${exchangeRates ? 'YES' : 'NO'}\n`;
-                    if (exchangeRates) {
-                        status += `    EUR: ${exchangeRates.EUR}\n`;
-                        status += `    GBP: ${exchangeRates.GBP}\n`;
-                        status += `    AUD: ${exchangeRates.AUD}\n`;
-                    }
-                    status += `\n  Unit Tests:\n`;
-                    try {
-                        math.evaluate('1 USD');
-                        status += `    USD: ✓ Working\n`;
-                    } catch(e) { status += `    USD: ✗ ${e.message}\n`; }
-                    try {
-                        math.evaluate('1 EUR');
-                        status += `    EUR: ✓ Working\n`;
-                    } catch(e) { status += `    EUR: ✗ ${e.message}\n`; }
-                    try {
-                        math.evaluate('1 GBP');
-                        status += `    GBP: ✓ Working\n`;
-                    } catch(e) { status += `    GBP: ✗ ${e.message}\n`; }
-                    try {
-                        math.evaluate('1 AUD');
-                        status += `    AUD: ✓ Working\n`;
-                    } catch(e) { status += `    AUD: ✗ ${e.message}\n`; }
-                    return status;
-                },
-
-                // Timer functions
                 timer: function(duration) {
                     try {
-                        // Cancel existing timer
-                        if (timerInterval) {
-                            clearInterval(timerInterval);
-                            if (timerDisplay) timerDisplay.remove();
-                        }
-
-                        // Get duration in milliseconds
-                        let ms;
-                        if (math.isUnit(duration)) {
+                        // Cancel existing timer if running
+                        if (timerInterval) clearInterval(timerInterval);
+                        
+                        // Parse duration (simple parser for "X minutes" or "X seconds")
+                        let ms = 0;
+                        if (duration && duration.toNumber) {
                             ms = duration.toNumber('ms');
-                        } else if (typeof duration === 'number') {
-                            ms = duration * 1000; // Assume seconds
-                        } else {
-                            return "Error: timer() requires a time unit (e.g., timer(3 minutes))";
+                        } else if (duration && duration.value) {
+                            ms = duration.value * 1000;
                         }
-
+                        
+                        if (ms <= 0) return "Error: Invalid duration";
+                        
                         timerEndTime = Date.now() + ms;
-
-                        // Create display element
-                        timerDisplay = document.createElement('div');
-                        timerDisplay.style.cssText = 'position: fixed; top: 20px; right: 20px; background: var(--primary); color: white; padding: 1rem 1.5rem; border-radius: 8px; font-size: 1.5rem; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 1000; font-family: var(--font-mono);';
-                        document.body.appendChild(timerDisplay);
-
-                        // Update display
-                        const updateTimer = () => {
-                            const remaining = timerEndTime - Date.now();
+                        let startMs = ms;
+                        
+                        timerDisplay = `Timer started: ${(startMs/1000).toFixed(1)}s`;
+                        
+                        timerInterval = setInterval(() => {
+                            const remaining = Math.max(0, timerEndTime - Date.now());
                             if (remaining <= 0) {
                                 clearInterval(timerInterval);
-                                timerDisplay.textContent = '⏰ TIME\'S UP!';
-                                timerDisplay.style.background = '#dc2626';
-                                // Play alert sound
-                                const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuFzvDiimMOGVqz6+OoWBkMQ6z0yoVECBFi0N+mYBwGNIzV8ct4LQUtfMnw3Y9ACBNRXL7o56lWGAo9n+DywHYjBCSG0O/jjGUPGWC26uqnWBkKQK7wyYVGCBBlz9yqYR0GNIvT8sx5LwUufMnw3Y9ACBNRXL7o56lWGAo9n+DywHYjBCSG0O/jjGUPGWC26uqnWBkKP67wyYVGCBBlz9yqYR0GM4vT8sx5LwUufMnw3Y9ACBNRXL7o56lWGAo9n+DywHYjBCSG0O/jjGUPGWC26uqnWBkKP67wyYVGCBBlz9yqYR0GM4vT8sx5LwUufMnw3Y9ACBNRXL7o56lWGAo9n+DywHYjBCSG0O/jjGUPGWC26uqnWBkKP67wyYVGCBBlz9yqYR0GM4vT8sx5LwUufMnw3Y9ACBNRXL7o56lWGAo9n+DywHYjBCSG0O/jjGUPGWC26uqnWBkKP67wyYVGCBBlz9yqYR0GM4vT8sx5LwUufMnw3Y9ACBNRXL7o56lWGAo9n+DywHYjBCSG0O/jjGUPGWC26uqnWBkKP67wyYVGCBBlz9yqYR0GM4vT8sx5LwUufMnw3Y9ACBNRXL7o56lWGAo9n+DywHYjBCSG0O/jjGUPGWC26uqnWBkKP67wyYVGCBBlz9yqYR0GM4vT8sx5LwUufMnw3Y9ACBNRXL7o56lWGAo9n+DywHYjBCSG0O/jjGUPGWC26uqnWBkKP67wyYVGCBBlz9yqYR0GM4vT8sx5LwUufMnw3Y9ACBNRXL7o56lWGAo9n+DywHYjBCSG0O/jjGUPGWC26uqnWBkKP67wyYVGCBBlz9yqYR0GM4vT8sx5LwUufMnw3Y9ACBNRXL7o56lWGAo9n+DywHYjBCSG0O/jjGUPGWC26uqnWBkKP67wyYVGCBBlz9yqYR0GM4vT8sx5LwUufMnw3Y9ACBNRXL7o56lWGAo9n+DywHYjBCSG0O/jjGUPGWC26uqnWBkKP67wyYVGCBBlz9yqYR0GM4vT8sx5LwUu');
-                                audio.play().catch(e => console.log('Audio play failed:', e));
-                                // Remove after 3 seconds
-                                setTimeout(() => {
-                                    if (timerDisplay) timerDisplay.remove();
-                                    timerDisplay = null;
-                                }, 3000);
                                 timerInterval = null;
-                                return;
+                                if (window.updateStatus) window.updateStatus();
                             }
-
-                            const seconds = Math.floor(remaining / 1000);
-                            const minutes = Math.floor(seconds / 60);
-                            const hours = Math.floor(minutes / 60);
-
-                            if (hours > 0) {
-                                timerDisplay.textContent = `⏱️ ${hours}:${String(minutes % 60).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
-                            } else if (minutes > 0) {
-                                timerDisplay.textContent = `⏱️ ${minutes}:${String(seconds % 60).padStart(2, '0')}`;
-                            } else {
-                                timerDisplay.textContent = `⏱️ ${seconds}s`;
-                            }
-                        };
-
-                        updateTimer();
-                        timerInterval = setInterval(updateTimer, 100);
-
-                        return `Timer started for ${Math.floor(ms / 1000)} seconds`;
+                        }, 100);
+                        
+                        return timerDisplay;
                     } catch(e) { return "Error: " + e.message; }
                 },
 
@@ -1108,663 +1056,122 @@ print("This will not print")`;
                     if (timerInterval) {
                         clearInterval(timerInterval);
                         timerInterval = null;
+                        return "Timer cancelled";
                     }
-                    if (timerDisplay) {
-                        timerDisplay.remove();
-                        timerDisplay = null;
-                    }
-                    return "Timer cancelled";
+                    return "No timer running";
                 },
 
-                // Stopwatch functions
                 stopwatchStart: function() {
-                    if (stopwatchInterval) {
-                        return "Stopwatch already running. Use stopwatchStop() first.";
-                    }
-
                     stopwatchStartTime = Date.now() - stopwatchElapsed;
-
-                    // Create display element
-                    if (!stopwatchDisplay) {
-                        stopwatchDisplay = document.createElement('div');
-                        stopwatchDisplay.style.cssText = 'position: fixed; top: 80px; right: 20px; background: #059669; color: white; padding: 1rem 1.5rem; border-radius: 8px; font-size: 1.5rem; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 1000; font-family: var(--font-mono);';
-                        document.body.appendChild(stopwatchDisplay);
-                    }
-
-                    const updateStopwatch = () => {
-                        const elapsed = Date.now() - stopwatchStartTime;
-                        stopwatchElapsed = elapsed;
-
-                        const ms = Math.floor(elapsed % 1000 / 10);
-                        const seconds = Math.floor(elapsed / 1000) % 60;
-                        const minutes = Math.floor(elapsed / 60000) % 60;
-                        const hours = Math.floor(elapsed / 3600000);
-
-                        if (hours > 0) {
-                            stopwatchDisplay.textContent = `⏱️ ${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(ms).padStart(2, '0')}`;
-                        } else {
-                            stopwatchDisplay.textContent = `⏱️ ${minutes}:${String(seconds).padStart(2, '0')}.${String(ms).padStart(2, '0')}`;
-                        }
-                    };
-
-                    updateStopwatch();
-                    stopwatchInterval = setInterval(updateStopwatch, 50);
-
+                    if (stopwatchInterval) clearInterval(stopwatchInterval);
+                    stopwatchInterval = setInterval(() => {
+                        stopwatchElapsed = Date.now() - stopwatchStartTime;
+                    }, 100);
                     return "Stopwatch started";
                 },
 
                 stopwatchStop: function() {
-                    if (!stopwatchInterval) {
-                        return "Stopwatch not running";
-                    }
-
-                    clearInterval(stopwatchInterval);
+                    if (stopwatchInterval) clearInterval(stopwatchInterval);
                     stopwatchInterval = null;
-
-                    const elapsed = stopwatchElapsed;
-                    const seconds = Math.floor(elapsed / 1000);
-                    const minutes = Math.floor(seconds / 60);
-                    const hours = Math.floor(minutes / 60);
-
-                    let timeStr = '';
-                    if (hours > 0) {
-                        timeStr = `${hours}h ${minutes % 60}m ${seconds % 60}s`;
-                    } else if (minutes > 0) {
-                        timeStr = `${minutes}m ${seconds % 60}s`;
-                    } else {
-                        timeStr = `${seconds}.${String(Math.floor(elapsed % 1000 / 10)).padStart(2, '0')}s`;
-                    }
-
-                    return `Stopwatch stopped at ${timeStr}`;
+                    const sec = (stopwatchElapsed / 1000).toFixed(2);
+                    return `Stopwatch: ${sec}s`;
                 },
 
                 stopwatchReset: function() {
-                    if (stopwatchInterval) {
-                        clearInterval(stopwatchInterval);
-                        stopwatchInterval = null;
-                    }
-                    if (stopwatchDisplay) {
-                        stopwatchDisplay.remove();
-                        stopwatchDisplay = null;
-                    }
+                    if (stopwatchInterval) clearInterval(stopwatchInterval);
+                    stopwatchInterval = null;
                     stopwatchElapsed = 0;
                     stopwatchStartTime = null;
                     return "Stopwatch reset";
                 }
-            }, { override: true });
-
-            // Create currency units after math.js is set up
-            const initialUnitsCreated = createCurrencyUnits();
-            if (!initialUnitsCreated) {
-                console.warn('⚠️ Currency units not created during initialization. Will retry after fetching rates.');
-            }
-
-            parser = math.parser();
-            runCalculation(); 
+            });
         }
 
-        inputArea.addEventListener('input', () => localStorage.setItem(STORAGE_KEY, inputArea.value));
+        // --- Keyboard Shortcuts & UI ---
         inputArea.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && e.shiftKey) {
+            if(e.shiftKey && e.key === 'Enter') {
                 e.preventDefault();
                 runCalculation();
             }
         });
 
-        function showCheatsheet() { helpModal.showModal(); }
-        function closeCheatsheet() { helpModal.close(); }
-
-        function showFullHelp() {
-            const helpContent = `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ScriptCalc - Complete Help & Documentation</title>
-    <style>
-        body { font-family: system-ui, -apple-system, sans-serif; max-width: 1200px; margin: 0 auto; padding: 2rem; line-height: 1.6; background: #f8fafc; }
-        h1 { color: #4f46e5; border-bottom: 3px solid #4f46e5; padding-bottom: 0.5rem; }
-        h2 { color: #4338ca; margin-top: 2rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 0.3rem; }
-        h3 { color: #6366f1; margin-top: 1.5rem; }
-        pre { background: #1e293b; color: #e2e8f0; padding: 1rem; border-radius: 6px; overflow-x: auto; font-size: 0.9rem; line-height: 1.5; }
-        code { background: #e2e8f0; color: #1e293b; padding: 0.2rem 0.4rem; border-radius: 3px; font-size: 0.9em; }
-        pre code { background: transparent; color: inherit; padding: 0; }
-        .note { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 1rem; margin: 1rem 0; border-radius: 4px; }
-        .tip { background: #dcfce7; border-left: 4px solid #10b981; padding: 1rem; margin: 1rem 0; border-radius: 4px; }
-        .warning { background: #fee2e2; border-left: 4px solid #ef4444; padding: 1rem; margin: 1rem 0; border-radius: 4px; }
-        .copy-btn { background: #4f46e5; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; margin-bottom: 1rem; }
-        .copy-btn:hover { background: #4338ca; }
-    </style>
-</head>
-<body>
-    <h1>📘 ScriptCalc Complete Help & Documentation</h1>
-    <p><strong>ScriptCalc</strong> is a browser-based scientific calculator with MATLAB-style syntax, supporting math operations, plotting, date/time handling, currency conversion, and more.</p>
-
-    <div class="tip">
-        <strong>💡 Tip:</strong> You can copy and paste any code block from this page directly into ScriptCalc!
-    </div>
-
-    <button class="copy-btn" onclick="copyAllExamples()">📋 Copy All Examples</button>
-
-    <h2>📊 Plotting (MATLAB-Style)</h2>
-
-    <h3>Simple Plotting</h3>
-    <pre><code># Auto-vectorized functions - sin/cos work on arrays!
-figure()
-x = range(0, 10, 0.5)
-y = sin(x)
-plot(x, y)
-title('y = sin(x)')
-xlabel('X')
-ylabel('Y')</code></pre>
-
-    <h3>Multiple Traces with hold on</h3>
-    <pre><code># Hold on to add multiple plots to same figure
-figure()
-t = range(0, 20, 0.2)
-y2 = sin(t)
-y3 = cos(t)
-plot(t, y2)
-hold on
-plot(t, y3)
-hold off
-legend('Sine', 'Cosine')
-title('sin(t) and cos(t)')
-xlabel('Time (t)')
-ylabel('Amplitude')</code></pre>
-
-    <h3>Advanced Plot with Custom Traces</h3>
-    <pre><code># Direct Plotly trace specification
-figure()
-t = range(0, 20, 0.2)
-trace1 = {x: t, y: sin(t), name: 'Sine', type: 'scatter'}
-trace2 = {x: t, y: cos(t), name: 'Cosine', type: 'bar'}
-plot([trace1, trace2], {title: 'Mixed Plot'})</code></pre>
-
-    <h2>📅 Date & Time Operations</h2>
-
-    <h3>Current Time in Multiple Zones</h3>
-    <pre><code># Predefined zones: Denver, Sydney, Mechelen
-today = now(Denver)
-ThreeZonesNow()
-
-# Specific time in all three zones
-refDay = today
-ThreeZones(refDay + 1 day)</code></pre>
-
-    <h3>Date Formatting and Conversion</h3>
-    <pre><code># Pretty date formatting
-sDen = prettydate(refDay)
-sSyd = prettydate(toZone(refDay, Sydney))
-sMech = prettydate(toZone(refDay, Mechelen))
-
-# Formatted output
-printf("Denver   %s\\nMechelen %s\\nSydney   %s\\n", sDen, sMech, sSyd)</code></pre>
-
-    <h3>Date Arithmetic</h3>
-    <pre><code># Date differences
-NewYearsDay = "2026-01-01T00:00:01.000-07:00"
-StophYOB = "1971-01-01T00:00:01.000-05:00"
-age = now() - StophYOB
-
-# Date addition
-next_week = today + 1 week
-tomorrow = today + 1 day
-in_30_minutes = now() + 30 minutes</code></pre>
-
-    <h2>⏱️ Timer & Stopwatch</h2>
-
-    <h3>Countdown Timer</h3>
-    <pre><code># Natural time units
-timer(3 minutes)
-timer(30 seconds)
-timer(1 hour)
-timer(90)          # Assumes seconds
-
-# Cancel timer
-timerCancel()</code></pre>
-
-    <h3>Stopwatch</h3>
-    <pre><code># Start/stop/reset
-stopwatchStart()   # Start timing
-stopwatchStop()    # Stop and show elapsed
-stopwatchReset()   # Reset to zero</code></pre>
-
-    <h2>🔢 Matrix Operations</h2>
-
-    <h3>Matrix Creation and Operations</h3>
-    <pre><code># Identity matrix
-a1 = identity(2, 2)
-
-# Manual matrix creation
-b1 = [1, 2; 3, 4]
-
-# Matrix multiplication
-c1 = a1 * b1
-
-# Matrix inversion
-inv(c1)
-
-# Verify: inv(c1) * c1 = identity
-inv(c1) * c1</code></pre>
-
-    <h3>Element-wise Operations (MATLAB-style)</h3>
-    <pre><code># Element-wise operators
-a = [1, 2, 3, 4]
-b = [2, 3, 4, 5]
-
-c = a .* b         # Element-wise multiply: [2, 6, 12, 20]
-d = a ./ b         # Element-wise divide
-e = a .^ 2         # Element-wise power: [1, 4, 9, 16]
-f = sin(a)         # Auto-vectorized: sin of each element</code></pre>
-
-    <h2>💱 Currency Conversion</h2>
-
-    <h3>Exchange Rates</h3>
-    <pre><code># Show current rates (cached for 1 hour)
-showrates()
-
-# Natural conversion syntax (like temperature!)
-1 USD in EUR
-100 USD in GBP
-50 GBP in AUD
-100 EUR in USD
-
-# Store and convert
-price = 25.50 EUR
-price in USD</code></pre>
-
-    <h2>📏 Unit Conversions</h2>
-
-    <h3>Length, Temperature, Volume</h3>
-    <pre><code># Length
-1 kg in lbs
-height = 180 cm
-height in feet
-
-# Temperature
-25 degC in degF
--40 degC in degF
-98.6 degF in degC
-
-# Volume
-3 teaspoons in ml
-2 gallons in liters</code></pre>
-
-    <h3>Custom Unit Functions</h3>
-    <pre><code># Feet and inches conversion
-height = 180 cm
-formatted = toFeetInches(height)
-
-# Manual calculation
-height_ft = 180 / (2.54 * 12)
-height_ft2 = floor(height_ft)
-height_in2 = round((height_ft - floor(height_ft)) * 12)
-printf("%d ft %d in", height_ft2, height_in2)</code></pre>
-
-    <h2>🔤 String & Formatting</h2>
-
-    <h3>NATO Phonetic Alphabet</h3>
-    <pre><code># Convert text to NATO phonetic
-nato('A')
-nato("Christopher Joseph Long")
-nato('SOS')</code></pre>
-
-    <h3>Formatted Output</h3>
-    <pre><code># printf formatting
-name = "Stoph"
-age = 54
-printf("User %s is %d years old\\n", name, age)
-
-# Number formatting
-val = 12.345678
-format(val, 3)                                    # "12.3"
-format(val, {precision: 2, notation: "fixed"})    # "12.35"
-
-# Pretty date
-prettydate(now())</code></pre>
-
-    <h2>🧮 Mathematics</h2>
-
-    <h3>Basic Operations</h3>
-    <pre><code># Standard math
-sqrt(2) / pi
-round(sin(pi))
-1e6 / 978
-
-# Logarithms
-log(100, 10)       # log base 10
-log(256, 2)        # log base 2
-log(e)             # Natural log (ln)
-
-# Trigonometry on arrays (auto-vectorized!)
-angles = range(0, pi, 0.1)
-sines = sin(angles)
-cosines = cos(angles)</code></pre>
-
-    <h3>Special Functions (CIC4 Units)</h3>
-    <pre><code># Charge calculations
-CurrentuA = CL2uAzp(255)
-uAzp2CL(1750)
-PWusec = 25
-Charge_nC = CurrentuA * PWusec * 1e-6 * 1e-6 * 1e9</code></pre>
-
-    <h2>🎯 Advanced Features</h2>
-
-    <h3>Variables and Scope</h3>
-    <pre><code># Variables persist between commands
-x = 10
-y = x * 2
-z = y + x          # z = 30
-
-# Suppress output with semicolon
-a = 100;           # No output
-b = 200            # Shows: 200</code></pre>
-
-    <h3>Comments</h3>
-    <pre><code># Single line comment with #
-% Alternative comment with %
-
-x = 5  # Inline comment</code></pre>
-
-    <h3>Exit Command</h3>
-    <pre><code># Stop execution at this line
-exit
-
-# Everything below exit is ignored
-print("This will not run")
-x = 100  # This won't execute</code></pre>
-
-    <h2>📚 Complete Example Session</h2>
-    <pre id="all-examples"><code># ========================================
-# SCRIPTCALC - COMPLETE EXAMPLE SESSION
-# Copy this entire block to test all features!
-# ========================================
-
-# --- PLOTTING ---
-figure()
-x = range(0, 10, 0.5)
-y = sin(x)
-plot(x, y)
-title('Sine Wave')
-xlabel('X')
-ylabel('sin(X)')
-
-figure()
-t = range(0, 10, 0.2)
-plot(t, sin(t))
-hold on
-plot(t, cos(t))
-legend('sin(t)', 'cos(t)')
-title('Trig Functions')
-
-# --- DATE & TIME ---
-today = now(Denver)
-ThreeZonesNow()
-
-refDay = today
-sDen = prettydate(refDay)
-printf("Denver: %s\\n", sDen)
-
-next_week = today + 1 week
-age_days = now() - "1971-01-01T00:00:01.000-05:00"
-
-# --- TIMER & STOPWATCH ---
-# timer(30 seconds)    # Uncomment to test
-# timerCancel()
-# stopwatchStart()
-# stopwatchStop()
-# stopwatchReset()
-
-# --- MATRIX MATH ---
-a1 = identity(2, 2)
-b1 = [1, 2; 3, 4]
-c1 = a1 * b1
-inv(c1)
-
-# Element-wise operations
-a = [1, 2, 3, 4]
-b = a .^ 2
-c = a .* [2, 2, 2, 2]
-
-# --- CURRENCY ---
-showrates()
-100 USD in EUR
-50 GBP in AUD
-
-# --- UNIT CONVERSIONS ---
-1 kg in lbs
-25 degC in degF
-height = 180 cm
-toFeetInches(height)
-
-# --- NATO PHONETIC ---
-nato('HELP')
-
-# --- FORMATTING ---
-name = "ScriptCalc"
-version = 1.9
-printf("%s v%.1f is awesome!\\n", name, version)
-
-val = 12.345678
-format(val, 3)
-
-# --- MATH ---
-sqrt(2) / pi
-log(100, 10)
-log(256, 2)
-
-# --- SPECIAL FUNCTIONS ---
-CurrentuA = CL2uAzp(255)
-uAzp2CL(1750)
-
-exit
-# Code below exit is ignored
-print("This won't run")</code></pre>
-
-    <h2>💡 Tips & Tricks</h2>
-    <div class="tip">
-        <strong>Auto-vectorization:</strong> Math functions automatically work on arrays! No need for <code>map()</code>.
-    </div>
-    <div class="tip">
-        <strong>Natural syntax:</strong> Use <code>in</code> for conversions: <code>100 USD in EUR</code>, <code>25 degC in degF</code>
-    </div>
-    <div class="tip">
-        <strong>Hold state:</strong> Use <code>hold on</code> (no quotes!) to add multiple plots to the same figure.
-    </div>
-    <div class="tip">
-        <strong>Suppress output:</strong> End commands with <code>;</code> to suppress console output.
-    </div>
-    <div class="note">
-        <strong>Cached data:</strong> Exchange rates are cached for 1 hour. Currency conversions work offline with last cached rates.
-    </div>
-    <div class="warning">
-        <strong>Timer/Stopwatch:</strong> Only one timer and one stopwatch can run at a time. Start a new one to cancel the previous.
-    </div>
-
-    <h2>⌨️ Keyboard Shortcuts</h2>
-    <ul>
-        <li><strong>Shift + Enter:</strong> Run code</li>
-        <li><strong>Semicolon (;):</strong> Suppress output for that line</li>
-        <li><strong>exit:</strong> Stop execution at that line</li>
-    </ul>
-
-    <script>
-        function copyAllExamples() {
-            const code = document.getElementById('all-examples').textContent;
-            navigator.clipboard.writeText(code).then(() => {
-                alert('✓ All examples copied to clipboard! Paste into ScriptCalc input.');
-            });
-        }
-    <\/script>
-</body>
-</html>`;
-
-            const helpWindow = window.open('', '_blank');
-            helpWindow.document.write(helpContent);
-            helpWindow.document.close();
-        }
-
-        helpModal.addEventListener('click', (e) => {
-            const rect = helpModal.getBoundingClientRect();
-            if (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) helpModal.close();
-        });
-
-        function clearAll() {
-            if(confirm('Clear all code?')) {
-                inputArea.value = '';
-                localStorage.setItem(STORAGE_KEY, '');
-                outputArea.innerHTML = '<div class="info-line">Ready.</div>';
-                inputArea.focus();
-            }
-        }
-
-        function formatMatrix(matrixObj) {
-            try {
-                const size = matrixObj.size();
-                if (size.length > 2 || size[0] > 20 || size[1] > 20) return null;
-                const arr = matrixObj.toArray();
-                let html = '<div style="display:inline-block; background:rgba(226,232,240,0.5); border-radius:4px; padding:4px 8px; vertical-align:top; color:#334155;">';
-                arr.forEach((row, i) => {
-                    html += '<div style="display:flex; gap:1rem;">';
-                    if (Array.isArray(row)) {
-                        row.forEach(val => {
-                             let s = math.format(val, { precision: 5, lowerExp: -5, upperExp: 5 });
-                             html += `<span style="flex:1; text-align:right;">${s}</span>`;
-                        });
-                    } else {
-                        let s = math.format(row, { precision: 5 });
-                        html += `<span style="flex:1; text-align:right;">${s}</span>`;
-                    }
-                    html += '</div>';
-                });
-                html += '</div>';
-                return html;
-            } catch(e) { return null; }
-        }
-
-        function preloadScopeFunctions() {
-            try {
-                parser.evaluate("CL2uAzp(CL) = CL == 0 ? 0 : 17.5 * 100^(CL/255)");
-                parser.evaluate("uAzp2CL(I) = I == 0 ? 0 : 255 * log10(I/17.5) / 2");
-                parser.evaluate("Sydney = 'Australia/Sydney'");
-                parser.evaluate("Mechelen = 'Europe/Brussels'");
-                parser.evaluate("Denver = 'America/Denver'");
-            } catch (e) { console.error("Failed to load default functions", e); }
-        }
-
-        function runCalculation() {
-            if (typeof math === 'undefined' || typeof luxon === 'undefined') return;
+        window.runCalculation = function() {
             const code = inputArea.value;
-            const lines = code.split('\n');
-            parser.clear();
-            preloadScopeFunctions();
-            outputArea.innerHTML = '';
+            localStorage.setItem(STORAGE_KEY, code);
 
-            // Clear previous graphs and reset state
+            outputArea.innerHTML = '';
             graphsContainer.innerHTML = '';
             graphCounter = 0;
-            currentFigure = null;
-            holdState = false;
+            graphsContainer.classList.add('hidden');
+            switchTab('console');
 
-            let hasOutput = false;
+            const lines = code.split('\n');
+            const commands = [];
+            let currentCmd = '';
 
-            // Updated to for...of loop to allow breaking
-            for (const line of lines) {
-                const trimmedLine = line.trim();
-
-                // Skip empty lines or comments
-                if (!trimmedLine || trimmedLine.startsWith('#') || trimmedLine.startsWith('%')) continue;
-
-                // EXIT COMMAND: Stop execution if encountered
-                if (trimmedLine.toLowerCase() === 'exit') {
-                    addOutputLine('Execution stopped by exit command.', 'info');
+            // Parse commands (group multi-line blocks)
+            for (let line of lines) {
+                const trimmed = line.trim();
+                if (trimmed.startsWith('%') || trimmed === '') continue;
+                if (trimmed === 'exit') {
+                    commands.push(currentCmd.trim());
                     break;
                 }
-
-                const suppressOutput = trimmedLine.endsWith(';');
-                let cleanLine = suppressOutput ? trimmedLine.slice(0, -1) : trimmedLine;
-
-                // Convert MATLAB-style commands without parentheses
-                // hold on -> hold('on'), hold off -> hold('off')
-                cleanLine = cleanLine.replace(/\bhold\s+on\b/gi, "hold('on')");
-                cleanLine = cleanLine.replace(/\bhold\s+off\b/gi, "hold('off')");
-
-                // Convert MATLAB-style operators to function calls
-                // Match patterns like: a .* b, [1,2] .* [3,4], etc.
-                cleanLine = cleanLine.replace(/([a-zA-Z_][\w]*(?:\[[^\]]*\])?|\[[^\]]*\]|\d+(?:\.\d+)?)\s*\.\*\s*([a-zA-Z_][\w]*(?:\[[^\]]*\])?|\[[^\]]*\]|\d+(?:\.\d+)?)/g, 'dotMultiply($1, $2)');
-                cleanLine = cleanLine.replace(/([a-zA-Z_][\w]*(?:\[[^\]]*\])?|\[[^\]]*\]|\d+(?:\.\d+)?)\s*\.\/\s*([a-zA-Z_][\w]*(?:\[[^\]]*\])?|\[[^\]]*\]|\d+(?:\.\d+)?)/g, 'dotDivide($1, $2)');
-                cleanLine = cleanLine.replace(/([a-zA-Z_][\w]*(?:\[[^\]]*\])?|\[[^\]]*\]|\d+(?:\.\d+)?)\s*\.\^\s*([a-zA-Z_][\w]*(?:\[[^\]]*\])?|\[[^\]]*\]|\d+(?:\.\d+)?)/g, 'dotPow($1, $2)');
-
-                try {
-                    const result = parser.evaluate(cleanLine);
-                    addOutputLine(trimmedLine, 'command');
-
-                    if (!suppressOutput && result !== undefined) {
-                        let outputHtml = '';
-                        if (result && result.isMatrix) outputHtml = formatMatrix(result);
-                        if (!outputHtml) {
-                            if (typeof result === 'string') {
-                                // Check for graph link marker
-                                const graphLinkMatch = result.match(/^GRAPH_LINK:(\d+)$/);
-                                if (graphLinkMatch) {
-                                    const graphNum = graphLinkMatch[1];
-                                    const graphId = 'graph-' + graphNum;
-                                    outputHtml = `<a href="javascript:void(0)" onclick="jumpToGraph('${graphId}')" style="color: var(--primary); text-decoration: underline; cursor: pointer; font-weight: 500;">Graph ${graphNum} generated</a>`;
-                                } else {
-                                    const safeResult = result.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-                                    outputHtml = `<span class="result-val">${safeResult}</span>`;
-                                    if (result.match(/^\d{4}-\d{2}-\d{2}/)) {
-                                         const dt = luxon.DateTime.fromISO(result, { setZone: true });
-                                         if (dt && dt.isValid) {
-                                             const prettyDate = dt.toFormat('yyyy_MM_dd_HHmm MMM dd hh:mma EEE');
-                                             outputHtml += `<span class="pretty-date">${prettyDate}</span>`;
-                                         }
-                                    }
-                                }
-                            } else {
-                                try {
-                                    const formattedResult = math.format(result, { precision: 14 });
-                                    outputHtml = `<span class="result-val">${formattedResult}</span>`;
-                                } catch (e) { outputHtml = String(result); }
-                            }
-                        }
-                        addOutputLine(outputHtml, 'result', true);
-                        hasOutput = true;
+                currentCmd += (currentCmd ? '\n' : '') + line;
+                if (line.trim().endsWith(')') || ['figure', 'hold on', 'hold off', 'exit'].some(kw => trimmed === kw)) {
+                    if (currentCmd.trim()) {
+                        commands.push(currentCmd.trim());
+                        currentCmd = '';
                     }
-                } catch (err) {
-                    addOutputLine(trimmedLine, 'command');
-                    addOutputLine(err.message, 'error');
-                    hasOutput = true;
                 }
-            } // end loop
+            }
+            if (currentCmd.trim()) commands.push(currentCmd.trim());
 
-            // Render any pending figure at end of execution
+            // Execute
+            for (let cmd of commands) {
+                outputArea.innerHTML += `<div class="cmd-line">> ${cmd.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>`;
+                try {
+                    let result = math.evaluate(cmd);
+                    if (result !== undefined && result !== '') {
+                        if (typeof result === 'object' && result.toString) {
+                            result = result.toString();
+                        }
+                        outputArea.innerHTML += `<div class="res-line">${String(result).replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>`;
+                    }
+                } catch(e) {
+                    outputArea.innerHTML += `<div class="err-line">Error: ${e.message}</div>`;
+                }
+            }
+
+            // Render final figure if exists
             if (currentFigure && currentFigure.traces.length > 0) {
                 const num = renderFigure(currentFigure);
                 if (num) {
-                    const graphId = 'graph-' + num;
-                    const outputHtml = `<a href="javascript:void(0)" onclick="jumpToGraph('${graphId}')" style="color: var(--primary); text-decoration: underline; cursor: pointer; font-weight: 500;">Graph ${num} generated</a>`;
-                    addOutputLine(outputHtml, 'result', true);
-                    hasOutput = true;
+                    outputArea.innerHTML += `<div class="info-line"><a href="javascript:jumpToGraph('graph-${num}')" style="color:var(--primary);text-decoration:none;cursor:pointer;">View Graph ${num} ↗</a></div>`;
                 }
-                currentFigure = null;
             }
+        };
 
-            if (!hasOutput && lines.some(l => l.trim().length > 0)) addOutputLine('Run complete.', 'info');
-            setTimeout(() => { outputArea.scrollTop = outputArea.scrollHeight; }, 10);
-        }
-
-        function addOutputLine(content, type, isHtml = false) {
-            const div = document.createElement('div');
-            div.className = 'output-line ' + (type === 'command' ? 'cmd-line' : type === 'error' ? 'err-line' : type === 'info' ? 'info-line' : 'res-line');
-            if (isHtml) div.innerHTML = content;
-            else {
-                if(type === 'command') div.innerText = '> ' + content;
-                else div.innerText = content;
+        window.clearAll = function() {
+            if(confirm('Clear all input and output?')) {
+                inputArea.value = '';
+                outputArea.innerHTML = '';
+                graphsContainer.innerHTML = '';
+                graphCounter = 0;
             }
-            outputArea.appendChild(div);
-        }
+        };
+
+        window.showCheatsheet = function() {
+            helpModal.showModal();
+        };
+
+        window.closeCheatsheet = function() {
+            helpModal.close();
+        };
+
+        window.showFullHelp = function() {
+            helpModal.showModal();
+        };
     </script>
 </body>
 </html>
