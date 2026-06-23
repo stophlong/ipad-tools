@@ -449,8 +449,8 @@ print("This will not run")
                 return false;
             }
 
-            // Validate that we have at least the base rates (don't require CAD to be present)
-            if (!exchangeRates.EUR || !exchangeRates.GBP || !exchangeRates.AUD) {
+            // Validate that we have all required rates
+            if (!exchangeRates.EUR || !exchangeRates.GBP || !exchangeRates.AUD || !exchangeRates.CAD) {
                 console.warn('Cannot create currency units: missing required rates', exchangeRates);
                 return false;
             }
@@ -489,11 +489,8 @@ print("This will not run")
                 math.createUnit('AUD', { definition: `${1/exchangeRates.AUD} USD` });
                 math.createUnit('aud', { definition: '1 AUD' });
 
-                // Add CAD if available
-                if (exchangeRates.CAD) {
-                    math.createUnit('CAD', { definition: `${1/exchangeRates.CAD} USD` });
-                    math.createUnit('cad', { definition: '1 CAD' });
-                }
+                math.createUnit('CAD', { definition: `${1/exchangeRates.CAD} USD` });
+                math.createUnit('cad', { definition: '1 CAD' });
 
                 console.log('✓ Currency units created with rates:', exchangeRates);
                 return true;
