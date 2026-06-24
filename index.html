@@ -29,7 +29,20 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/12.4.0/math.min.js" defer onerror="window.loadFallback(this, 'math.js')"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/luxon/3.4.4/luxon.min.js" defer onerror="window.loadFallback(this, 'luxon.js')"></script>
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js" defer onerror="window.loadFallback(this, 'plotly.min.js')"></script>
-    <script src="unicodeit.js" defer></script>
+    <script src="unicodeit.js" defer onerror="window.loadUnicodeitFallback && window.loadUnicodeitFallback()"></script>
+    <script>
+        // Fallback: load unicodeit from CDN as ES module if local file fails
+        window.loadUnicodeitFallback = function() {
+            var s = document.createElement('script');
+            s.type = 'module';
+            s.textContent = "import u from 'https://esm.sh/unicodeit';window.unicodeitLib=u;";
+            document.head.appendChild(s);
+        };
+        // Safety net: if unicodeit.js loaded but failed silently, try CDN after page load
+        window.addEventListener('load', function() {
+            if (!window.unicodeitLib) window.loadUnicodeitFallback();
+        });
+    </script>
 
     <style>
         /* CSS Variables */
