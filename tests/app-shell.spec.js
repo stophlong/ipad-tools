@@ -1,0 +1,62 @@
+const { test, expect } = require('@playwright/test');
+const { openApp, runScript, getOutput, results } = require('./helpers');
+
+test.describe('app shell', () => {
+  test('first visit loads the default example code and auto-runs it', async ({ page }) => {
+    await openApp(page, { seedCode: null }); // genuine first visit
+    await expect(page.locator('#input-area')).toHaveValue(/Plotting Example/);
+    // The default script plots two figures and prints results.
+    await expect(page.locator('#graphs-container .js-plotly-plot')).toHaveCount(2);
+    const out = await getOutput(page);
+    expect(results(out).join('\n')).toContain('Hotel Echo Lima Lima Oscar'); // nato('Hello World')
+  });
+
+  test('editor content persists across a reload (localStorage)', async ({ page }) => {
+    // seedCode: null — an init script would re-seed localStorage on reload
+    // and defeat the point of this test.
+    await openApp(page, { seedCode: null });
+    await page.fill('#input-area', 'x = 42');
+    await page.reload();
+    await page.waitForFunction(() => typeof math !== 'undefined' && typeof math.nato === 'function');
+    await expect(page.locator('#input-area')).toHaveValue('x = 42');
+  });
+
+  test('Shift+Enter runs the script', async ({ page }) => {
+    await openApp(page);
+    await page.fill('#input-area', '6 * 7');
+    await page.locator('#input-area').press('Shift+Enter');
+    const out = await getOutput(page);
+    expect(results(out)).toEqual(['42']);
+  });
+
+  test('Reset clears the editor after confirmation', async ({ page }) => {
+    await openApp(page, { seedCode: 'x = 1' });
+    page.on('dialog', d => d.accept());
+    await page.click('button:has-text("Reset")');
+    await expect(page.locator('#input-area')).toHaveValue('');
+    await expect(page.locator('#output-area')).toContainText('Ready.');
+  });
+
+  test('cheatsheet modal opens and closes', async ({ page }) => {
+    await openApp(page);
+    await page.click('button:has-text("Cheatsheet")');
+    await expect(page.locator('#help-modal')).toBeVisible();
+    await expect(page.locator('#help-modal')).toContainText('Quick Reference Cheatsheet');
+    await page.click('#help-modal button:has-text("✕")');
+    await expect(page.locator('#help-modal')).toBeHidden();
+  });
+
+  test('missing libraries produce the diagnostic panel instead of a blank page', async ({ page }) => {
+    // Block the CDNs AND the local fallbacks: the loader should report
+    // exactly which files could not be loaded.
+    for (const host of ['cdnjs.cloudflare.com', 'cdn.plot.ly', 'esm.sh']) {
+      await page.route(`https://${host}/**`, r => r.abort());
+    }
+    for (const local of ['math.js', 'luxon.js', 'plotly.min.js']) {
+      await page.route(`**/${local}`, r => r.abort());
+    }
+    await page.goto('/index.html');
+    await expect(page.locator('.diag-error')).toContainText('Missing Files');
+    await expect(page.locator('.diag-error')).toContainText('math.js');
+  });
+});

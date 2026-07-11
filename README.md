@@ -97,7 +97,14 @@ The **entire script re-runs from scratch** on every Run: the parser scope is cle
 
 ## Offline setup (Windows PC without internet)
 
-`index.html` loads its three libraries from CDNs, and each `<script>` tag has an `onerror` fallback that loads a **local file from the same folder** instead. Those local files are **not committed to this repo**, so for fully offline use, download them once (while online) and place them next to `index.html` with these exact names:
+`index.html` loads its three libraries from CDNs, and each `<script>` tag has an `onerror` fallback that loads a **local file from the same folder** instead. Those local files are **not committed to this repo**. The easy way to produce them (requires Node.js, one-time, online):
+
+```bash
+npm install
+npm run setup     # copies the pinned library builds next to index.html
+```
+
+Or download them manually and place them next to `index.html` with these exact names:
 
 | Local filename | Download from |
 |---|---|
@@ -148,12 +155,48 @@ Everything is in `index.html` (~1,800 lines). Reading order for future feature w
 - The help page relies on `window.open` — pop-up blockers can suppress it.
 - Timer audio uses an embedded base64 WAV and may be blocked until the user has interacted with the page.
 
+## Development & testing
+
+The app itself needs no tooling — everything below is **dev-only** and has zero effect on how fast `index.html` loads or runs (nothing here ships in the page; `node_modules/` and the local libs are gitignored).
+
+The test suite drives the **real `index.html` in a real (headless) browser** with [Playwright](https://playwright.dev/): it types scripts into the editor, clicks Run, and asserts on the console output, Plotly graph data, overlays, and localStorage. CDN hosts are deliberately blocked during tests so every run also proves the offline fallback path works, and the exchange-rate API is mocked for deterministic currency numbers.
+
+```bash
+npm install                  # once: test tooling + pinned library packages
+npm run setup                # once: produce local lib files (tests need them)
+npx playwright install       # once: browser for Playwright (if not present)
+npm test                     # run the full suite
+npx playwright test tests/dates.spec.js   # run one spec file
+```
+
+(If your environment provides its own Chromium build, point at it with `PW_CHROMIUM_PATH=/path/to/chrome npm test` instead of `npx playwright install`.)
+
+Test map (`tests/`):
+
+| File | Covers |
+|---|---|
+| `interpreter.spec.js` | comments, `;` suppression, `exit`, errors, scope reset between runs |
+| `operators-vectorization.spec.js` | `.*` `./` `.^`, auto-vectorized functions, matrices |
+| `plotting.spec.js` | `figure`/`plot`/`hold`/`legend`/labels, multi-figure, raw-trace form |
+| `dates.spec.js` | `now`/`prettydate`/`toZone`/`dateDiff`, date `+`/`-` overloads, ThreeZones |
+| `currency.spec.js` | conversions with mocked rates, offline fallback rates, diagnostics |
+| `utilities.spec.js` | `printf`, `nato`, `toFeetInches`, `latex`, CIC4 conversions |
+| `timers.spec.js` | countdown timer and stopwatch lifecycles |
+| `app-shell.spec.js` | default code, persistence, Shift+Enter, Reset, missing-libs diagnostic |
+
+**Working agreement for new features (TDD):** write the failing spec first (or extend an existing spec file), then implement in `index.html`, then run `npm test`. Refactors of `index.html` are only done under green tests.
+
 ## Repo layout
 
 ```
 ipad-tools/
-├── index.html   # the entire application
-└── README.md    # this file
+├── index.html             # the entire application (the only file that ships)
+├── README.md              # this file
+├── package.json           # dev-only: test tooling + pinned library versions
+├── playwright.config.js   # test runner config (static server, Denver timezone)
+├── scripts/
+│   └── download-libs.mjs  # produces the local offline library files
+└── tests/                 # Playwright characterization suite (see table above)
 ```
 
-(Local library files for offline use — `math.js`, `luxon.js`, `plotly.min.js`, `unicodeit.js` — sit next to `index.html` on the target machine but are currently not committed. Committing pinned copies is a good candidate future improvement for a zero-setup offline experience.)
+(Local library files for offline use — `math.js`, `luxon.js`, `plotly.min.js`, `unicodeit.js` — sit next to `index.html` on the target machine; produce them with `npm run setup`. They are gitignored to keep the repo light.)
