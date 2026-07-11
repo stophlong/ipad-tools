@@ -347,6 +347,7 @@ uAzp2CL(1750)                # µA -> current level (255)
 exit
 print("This will not run")
             </code>
+            <div id="cheatsheet-version" style="margin-top:0.75rem; font-size:0.75rem; color:var(--text-muted);"></div>
         </div>
     </dialog>
 
@@ -397,50 +398,40 @@ print("This will not run")
         const helpModal = document.getElementById('help-modal');
         const STORAGE_KEY = 'script_calc_code';
 
-        // Curated function reference, printed to the console by help().
-        // Keep in sync with the Cheatsheet modal and the full Help page.
-        const HELP_TEXT = `ScriptCalc quick reference          (tap any result line to copy it)
+        // Version stamp — bump whenever index.html changes. Shown at the end
+        // of help(), in the Cheatsheet, and at the bottom of the Help page,
+        // so any device can tell which build it is running.
+        const APP_BUILD = '2026-07-11 23:30 UTC';
 
-── PLOTTING ──────────────────────────────
-figure                     start a new figure
-plot(x, y)                 line plot; also plot([traces], layout)
-hold on / hold off         add traces to the same figure
-title('t')  xlabel('x')  ylabel('y')  legend('a','b')
-range(0, 10, 0.5)          make an array
-
-── MATH & MATRICES ───────────────────────
-+ - * / ^                  (matrix * = matrix multiply)
-.*  ./  .^                 element-wise operators
-sin cos tan exp log log10 sqrt abs ...   auto-work on arrays (radians)
-[1, 2; 3, 4]   identity(n,m)   inv(m)
-
-── DATES & TIME ──────────────────────────
-now()  now(Denver)         current time (Denver/Mechelen/Sydney predefined)
-date('2026-01-01')  prettydate(d)  toZone(d, Sydney)
-dateDiff(d1, d2, 'days')
-d + 1 day    d - 90 minutes    d2 - d1   (human readable)
-ThreeZonesNow()            Denver/Mechelen/Sydney (+ Local when traveling)
-
-── CURRENCY & UNITS ──────────────────────
-100 USD in EUR             (USD EUR GBP AUD CAD; live rates, 1h cache)
-price = 25.50 EUR;  price in USD
-showrates()  refreshcurrency()  checkcurrency()
-1 kg in lbs   25 degC in degF   toFeetInches(180 cm)
-
-── TIMERS ────────────────────────────────
-timer(3 minutes)  timerCancel()
-stopwatchStart()  stopwatchStop()  stopwatchReset()
-
-── TEXT & MISC ───────────────────────────
-printf("%s = %.2f", name, x)
-nato('text')               NATO phonetic alphabet
-latex('\\alpha \\to \\beta')   LaTeX -> Unicode (copies to clipboard)
-CL2uAzp(CL)  uAzp2CL(uA)   cochlear implant current level <-> uA
-
-── SCRIPT SYNTAX ─────────────────────────
-# or % comment      trailing ;  suppress output
-exit                stop execution here
-Shift+Enter         run           help()  this text`;
+        // help() output is generated from the same HTML the Help overlay
+        // shows (HELP_PAGE_HTML, defined further down): headings become
+        // comments and the example blocks stay verbatim, so the whole output
+        // can be pasted into the input and run. Generation stops before the
+        // "Complete Example Session" section.
+        let helpTextCache = null;
+        function buildHelpText() {
+            if (helpTextCache) return helpTextCache;
+            const lines = ['# ScriptCalc help — every line below can be pasted into the input and run'];
+            try {
+                const doc = new DOMParser().parseFromString(HELP_PAGE_HTML, 'text/html');
+                for (const el of doc.body.querySelectorAll('h2, h3, pre')) {
+                    const text = el.textContent.trim();
+                    if (el.tagName === 'H2') {
+                        if (text.includes('Complete Example Session')) break;
+                        lines.push('', '# ===== ' + text + ' =====');
+                    } else if (el.tagName === 'H3') {
+                        lines.push('', '# --- ' + text + ' ---');
+                    } else {
+                        lines.push(text);
+                    }
+                }
+            } catch (e) {
+                lines.push('# (help unavailable: ' + e.message + ')');
+            }
+            lines.push('', '# ScriptCalc build ' + APP_BUILD);
+            helpTextCache = lines.join('\n');
+            return helpTextCache;
+        }
 
         // Fetch exchange rates from API
         async function fetchExchangeRates() {
@@ -557,6 +548,56 @@ Shift+Enter         run           help()  this text`;
             } catch (e) {
                 console.log('Audio alert failed:', e);
             }
+        }
+
+        // --- Case-insensitive typing tolerance -------------------------
+        // Known FUNCTION names are case-corrected at call sites (name
+        // followed by '('), and a curated list of CONSTANTS/UNITS as bare
+        // tokens. Quoted strings are never touched, and user-defined
+        // variables keep MATLAB-style case sensitivity. The full math.js
+        // unit table is deliberately NOT included: unit names collide
+        // across case (m = meter, M = molar), so only unambiguous,
+        // commonly mistyped ones are corrected.
+        let caseFnMap = null;
+        let caseConstMap = null;
+        let caseConstExact = null;
+        function buildCaseMaps(customFunctions) {
+            caseFnMap = new Map();
+            const fnNames = [
+                ...Object.keys(customFunctions),
+                // parser-scope functions from preloadScopeFunctions()
+                'CL2uAzp', 'uAzp2CL',
+                // frequently used math.js built-ins
+                'range', 'identity', 'inv', 'zeros', 'ones', 'det',
+                'transpose', 'sqrt', 'format', 'max', 'min', 'sum',
+                'mean', 'median', 'std', 'random', 'mod'
+            ];
+            fnNames.forEach(n => caseFnMap.set(n.toLowerCase(), n));
+            caseConstMap = new Map();
+            ['Denver', 'Sydney', 'Mechelen', 'degC', 'degF',
+             'USD', 'EUR', 'GBP', 'AUD', 'CAD', 'pi'
+            ].forEach(n => caseConstMap.set(n.toLowerCase(), n));
+            // Spellings that are themselves valid and must never be
+            // rewritten (e.g. the lowercase currency unit aliases).
+            caseConstExact = new Set([...caseConstMap.values(),
+                'usd', 'eur', 'gbp', 'aud', 'cad']);
+        }
+        function fixKnownCase(line) {
+            if (!caseFnMap) return line;
+            // Odd segments of this split are quoted strings — leave them be.
+            return line.split(/('[^']*'|"[^"]*")/).map((seg, i) => {
+                if (i % 2 === 1) return seg;
+                seg = seg.replace(/\b([A-Za-z_]\w*)(\s*\()/g, (m, name, paren) => {
+                    const canon = caseFnMap.get(name.toLowerCase());
+                    return canon && canon !== name ? canon + paren : m;
+                });
+                seg = seg.replace(/\b[A-Za-z_]\w*\b/g, tok => {
+                    if (caseConstExact.has(tok)) return tok;
+                    const canon = caseConstMap.get(tok.toLowerCase());
+                    return canon && canon !== tok ? canon : tok;
+                });
+                return seg;
+            }).join('');
         }
 
         // Get exchange rates (with caching)
@@ -834,7 +875,7 @@ print("This will not print")`;
                 };
             }
 
-            math.import({
+            const customFunctions = {
                 floor: math.floor,
                 ceil: math.ceil,
                 round: math.round,
@@ -1142,12 +1183,13 @@ print("This will not print")`;
                     return originalSubtract(a, b);
                 },
 
-                // Curated in-console reference; help('text') searches it
+                // Runnable in-console reference; help('text') searches it
                 help: function(query) {
-                    if (query === undefined || query === null || query === '') return HELP_TEXT;
+                    const helpText = buildHelpText();
+                    if (query === undefined || query === null || query === '') return helpText;
                     if (typeof query !== 'string') return "Usage: help() for the full reference, or help('text') to search it, e.g. help('watch')";
                     const q = query.toLowerCase();
-                    const matches = HELP_TEXT.split('\n').filter(line => line.toLowerCase().includes(q));
+                    const matches = helpText.split('\n').filter(line => line.toLowerCase().includes(q));
                     if (matches.length === 0) return `No help entries matching '${query}'. Try help() for the full reference.`;
                     return matches.join('\n');
                 },
@@ -1374,7 +1416,9 @@ print("This will not print")`;
                     stopwatchStartTime = null;
                     return "Stopwatch reset";
                 }
-            }, { override: true });
+            };
+            math.import(customFunctions, { override: true });
+            buildCaseMaps(customFunctions);
 
             // Create currency units after math.js is set up
             const initialUnitsCreated = createCurrencyUnits();
@@ -1394,11 +1438,15 @@ print("This will not print")`;
             }
         });
 
-        function showCheatsheet() { helpModal.showModal(); }
+        function showCheatsheet() {
+            document.getElementById('cheatsheet-version').textContent = 'ScriptCalc build ' + APP_BUILD;
+            helpModal.showModal();
+        }
         function closeCheatsheet() { helpModal.close(); }
 
-        function showFullHelp() {
-            const helpContent = `<!DOCTYPE html>
+        // The complete Help document, rendered in the Help overlay and also
+        // the single source for help()'s runnable console text.
+        const HELP_PAGE_HTML = `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -1774,6 +1822,8 @@ print("This won't run")</code></pre>
         <li><strong>exit:</strong> Stop execution at that line</li>
     </ul>
 
+    <p style="margin-top:2rem; color:#64748b; font-size:0.85rem;">ScriptCalc build ${APP_BUILD}</p>
+
     <script>
         function copyAllExamples() {
             const code = document.getElementById('all-examples').textContent;
@@ -1785,6 +1835,7 @@ print("This won't run")</code></pre>
 </body>
 </html>`;
 
+        function showFullHelp() {
             // Render in-app (window.open traps iPad home-screen app mode
             // with no way back, and popup blockers can eat it entirely).
             let overlay = document.getElementById('help-overlay');
@@ -1807,7 +1858,7 @@ print("This won't run")</code></pre>
 
                 const frame = document.createElement('iframe');
                 frame.style.cssText = 'flex:1; border:none; width:100%;';
-                frame.srcdoc = helpContent;
+                frame.srcdoc = HELP_PAGE_HTML;
 
                 overlay.appendChild(bar);
                 overlay.appendChild(frame);
@@ -1954,6 +2005,10 @@ print("This won't run")</code></pre>
 
                 const suppressOutput = trimmedLine.endsWith(';');
                 let cleanLine = suppressOutput ? trimmedLine.slice(0, -1) : trimmedLine;
+
+                // Correct the case of known function/constant names
+                // (typing aid, esp. for iPad autocapitalization)
+                cleanLine = fixKnownCase(cleanLine);
 
                 // Convert MATLAB-style commands without parentheses
                 // hold on -> hold('on'), hold off -> hold('off'), figure -> figure()

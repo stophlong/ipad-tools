@@ -2,15 +2,24 @@ const { test, expect } = require('@playwright/test');
 const { openApp, runScript, results } = require('./helpers');
 
 test.describe('help() console reference', () => {
-  test('prints the categorized quick reference', async ({ page }) => {
+  test('prints the Help-page sections as runnable text', async ({ page }) => {
     await openApp(page);
     const out = await runScript(page, 'help()');
     const text = results(out)[0];
-    for (const section of ['PLOTTING', 'MATH & MATRICES', 'DATES & TIME', 'CURRENCY & UNITS', 'TIMERS', 'TEXT & MISC', 'SCRIPT SYNTAX']) {
+    for (const section of ['Plotting', 'Date & Time', 'Timer & Stopwatch', 'Matrix', 'Currency', 'CIC4']) {
       expect(text).toContain(section);
     }
     expect(text).toContain('ThreeZonesNow()');
     expect(text).toContain('CL2uAzp');
+    // headings arrive as comments so the whole output is pasteable
+    expect(text).toContain('# =====');
+    expect(text).not.toContain('Complete Example Session');
+  });
+
+  test('help() ends with the build timestamp', async ({ page }) => {
+    await openApp(page);
+    const out = await runScript(page, 'help()');
+    expect(results(out)[0]).toMatch(/# ScriptCalc build \d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC$/);
   });
 
   test("help('watch') returns only lines matching the query", async ({ page }) => {
@@ -25,7 +34,7 @@ test.describe('help() console reference', () => {
   test('help search is case-insensitive', async ({ page }) => {
     await openApp(page);
     const out = await runScript(page, "help('NATO')");
-    expect(results(out)[0]).toContain("nato('text')");
+    expect(results(out)[0]).toContain('nato(');
   });
 
   test('help search with no hits says so', async ({ page }) => {
