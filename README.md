@@ -14,7 +14,7 @@ It is designed to run well on:
 3. Press **Shift+Enter** or the **Run** button (▶ floating button on mobile) to execute.
 4. Results appear in the **Console** tab; plots appear in the **Graph** tab.
 
-Your code is auto-saved to the browser's `localStorage` as you type, so it survives page reloads. **Reset** clears the editor (with confirmation). **Cheatsheet** opens a quick-reference modal; **Help** opens a full documentation page in a new tab.
+Your code is auto-saved to the browser's `localStorage` as you type, so it survives page reloads. **Reset** clears the editor (with confirmation). **Cheatsheet** opens a quick-reference modal; **Help** opens the full documentation as an in-app overlay (works offline and in iPad home-screen app mode); `help()` prints a categorized function reference straight to the console. **Tap any result line to copy it** — handy on iPad.
 
 ## Feature overview
 
@@ -45,7 +45,7 @@ xlabel('X'); ylabel('Y')
 - `now(zone)` — current time as ISO string; `Denver`, `Mechelen`, `Sydney` are predefined zone constants
 - `prettydate(iso)` — formats as `yyyy_MM_dd_HHmm MMM dd hh:mma EEE`
 - `toZone(iso, zone)`, `date(str)`, `dateDiff(d1, d2, unit)`
-- `ThreeZonesNow()` / `ThreeZones(timestamp)` — the same instant in Denver, Mechelen, and Sydney
+- `ThreeZonesNow()` / `ThreeZones(timestamp)` — the same instant in Denver, Mechelen, and Sydney (each converted to that city's true time); when the device is in some other zone entirely, `ThreeZonesNow()` adds a fourth **Local** line so traveling never mislabels the clock
 - Date arithmetic via overloaded `+`/`-`: `now() + 30 minutes`, `today + 1 week`, and `date1 - date2` returns a human-readable duration ("2 years, 3 months, …"). ISO date strings printed to the console get an inline pretty-formatted badge.
 
 ### Currency conversion
@@ -59,7 +59,7 @@ price = 25.50 EUR
 price in USD
 ```
 
-Rates are fetched from `https://open.er-api.com/v6/latest/USD`, cached in `localStorage` for **1 hour**, and fall back to hardcoded approximate rates when offline. Diagnostics: `checkcurrency()`, `refreshcurrency()`.
+Rates are fetched from `https://open.er-api.com/v6/latest/USD`, cached in `localStorage` for **1 hour**, and fall back to baked-in approximate rates (dated `FALLBACK_RATES_DATE`) when offline. Whenever a script uses currency with non-live rates, the console appends one info line saying so and how old the rates are; `showrates()` shows the same provenance in its `Source:` line. Units are (re)created lazily before every run, so the first conversion works even on a cold, offline start. Diagnostics: `checkcurrency()`, `refreshcurrency()`.
 
 ### Unit conversions
 
@@ -67,7 +67,7 @@ Everything math.js supports: `1 kg in lbs`, `25 degC in degF`, `3 teaspoons in m
 
 ### Timers & stopwatch
 
-- `timer(3 minutes)` / `timer(90)` (bare numbers = seconds) — floating countdown overlay with an audio alert at zero; `timerCancel()`
+- `timer(3 minutes)` / `timer(90)` (bare numbers = seconds) — floating countdown overlay with a gentle three-chirp Web Audio alert at zero; `timerCancel()`
 - `stopwatchStart()`, `stopwatchStop()`, `stopwatchReset()` — floating elapsed-time overlay
 - One timer and one stopwatch at a time
 
@@ -152,8 +152,7 @@ Everything is in `index.html` (~1,800 lines). Reading order for future feature w
 - `latex()` clipboard copy fails silently in contexts where the Clipboard API is unavailable (e.g. non-HTTPS file:// on some browsers); the converted string is still shown.
 - Trig functions are replaced with native-JS-`Math` wrappers for speed/vectorization, so they **lose math.js unit/complex-number support** (e.g. `sin(45 deg)` no longer works — use radians).
 - Only 5 currencies are wired up; rates are all quoted against USD.
-- The help page relies on `window.open` — pop-up blockers can suppress it.
-- Timer audio uses an embedded base64 WAV and may be blocked until the user has interacted with the page.
+- Timer audio (Web Audio chirps) may stay silent until the user has interacted with the page at least once — a browser autoplay rule.
 
 ## Development & testing
 
@@ -179,10 +178,12 @@ Test map (`tests/`):
 | `operators-vectorization.spec.js` | `.*` `./` `.^`, auto-vectorized functions, matrices |
 | `plotting.spec.js` | `figure`/`plot`/`hold`/`legend`/labels, multi-figure, raw-trace form |
 | `dates.spec.js` | `now`/`prettydate`/`toZone`/`dateDiff`, date `+`/`-` overloads, ThreeZones |
-| `currency.spec.js` | conversions with mocked rates, offline fallback rates, diagnostics |
+| `timezones.spec.js` | travel behavior: true city times, Local line, spoofed device zones |
+| `currency.spec.js` | conversions with mocked rates, offline fallback + notices, cold-start races, diagnostics |
 | `utilities.spec.js` | `printf`, `nato`, `toFeetInches`, `latex`, CIC4 conversions |
+| `help-copy.spec.js` | `help()` reference, tap-to-copy result lines |
 | `timers.spec.js` | countdown timer and stopwatch lifecycles |
-| `app-shell.spec.js` | default code, persistence, Shift+Enter, Reset, missing-libs diagnostic |
+| `app-shell.spec.js` | default code, persistence, Shift+Enter, Reset, Help overlay, missing-libs diagnostic |
 
 **Working agreement for new features (TDD):** write the failing spec first (or extend an existing spec file), then implement in `index.html`, then run `npm test`. Refactors of `index.html` are only done under green tests.
 
@@ -192,6 +193,7 @@ Test map (`tests/`):
 ipad-tools/
 ├── index.html             # the entire application (the only file that ships)
 ├── README.md              # this file
+├── checknewfunctions.md   # manual walkthrough for verifying recent features
 ├── package.json           # dev-only: test tooling + pinned library versions
 ├── playwright.config.js   # test runner config (static server, Denver timezone)
 ├── scripts/
