@@ -191,7 +191,40 @@ double-backslash form `latex('\\alpha')` also still converts.
 
 ---
 
-## 9. Everything old still works
+## 9. Batch 3: runnable help(), case tolerance, build stamp
+
+**help() is now the Help page in runnable form.** Run `help()` — you get the
+same sections as the Help button (headings as `#` comments, examples
+verbatim), stopping before the "Complete Example Session". Copy the entire
+output, paste it into the input, Run: **expect zero errors** (plots render,
+the timer example starts and cancels itself, and it ends at the `exit`
+demo). `help('watch')` search still works.
+
+**Case tolerance.** Type these with wrong case and expect them all to work:
+
+```
+NATO('sos')
+Cl2uAzp(255)
+ShowRates()
+100 degf in degc
+THREEZONESNOW()
+PI * 2
+```
+
+Your own variables stay case-sensitive on purpose (`Foo` and `foo` are
+different), and text inside quotes is never rewritten. This should largely
+neutralize iPad autocapitalization annoyances.
+
+**Build timestamp.** Run `help()` and look at the last line, open the
+**Cheatsheet** (bottom line), or scroll the **Help** page to the bottom —
+all three show `ScriptCalc build <date time>`. After any future merge,
+re-download/refresh and check this stamp to confirm you actually got the
+new version (this answers the "I merged but don't see a change" mystery:
+if the stamp is old, your device is still loading an old copy).
+
+---
+
+## 10. Everything old still works
 
 Quick regression sweep — paste the whole block; every line should behave:
 

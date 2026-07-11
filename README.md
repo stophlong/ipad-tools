@@ -14,7 +14,7 @@ It is designed to run well on:
 3. Press **Shift+Enter** or the **Run** button (▶ floating button on mobile) to execute.
 4. Results appear in the **Console** tab; plots appear in the **Graph** tab.
 
-Your code is auto-saved to the browser's `localStorage` as you type, so it survives page reloads. **Reset** clears the editor (with confirmation). **Cheatsheet** opens a quick-reference modal; **Help** opens the full documentation as an in-app overlay (works offline and in iPad home-screen app mode); `help()` prints a categorized function reference straight to the console, and `help('watch')` searches it. **Tap any result line to copy it** — handy on iPad.
+Your code is auto-saved to the browser's `localStorage` as you type, so it survives page reloads. **Reset** clears the editor (with confirmation). **Cheatsheet** opens a quick-reference modal; **Help** opens the full documentation as an in-app overlay (works offline and in iPad home-screen app mode); `help()` prints the same document as runnable console text — headings become comments, so the whole output can be pasted back into the input — and `help('watch')` searches it. Both end with a `ScriptCalc build <timestamp>` stamp (also shown in the Cheatsheet) so you can always tell which version a device is running. Known function names and common constants/units (`degC`/`degF`, city zones, currencies, `pi`) are **case-tolerant** — `NATO('sos')` or `100 degf in degc` just work — while your own variables stay case-sensitive and quoted strings are never rewritten. **Tap any result line to copy it** — handy on iPad.
 
 ## Feature overview
 
@@ -186,7 +186,7 @@ Test map (`tests/`):
 | `timers.spec.js` | countdown timer and stopwatch lifecycles |
 | `app-shell.spec.js` | default code, persistence, Shift+Enter, Reset, Help overlay, missing-libs diagnostic |
 
-**Working agreement for new features (TDD):** write the failing spec first (or extend an existing spec file), then implement in `index.html`, then run `npm test`. Refactors of `index.html` are only done under green tests.
+**Working agreement for new features (TDD):** write the failing spec first (or extend an existing spec file), then implement in `index.html`, then run `npm test`. Refactors of `index.html` are only done under green tests. **Every change to `index.html` must bump the `APP_BUILD` constant** near the top of the script — it's how devices identify which version they're running (`help()` footer, Cheatsheet, Help page).
 
 ## Repo layout
 
