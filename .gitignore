@@ -1,0 +1,10 @@
+# Dev tooling (tests) — the app itself is just index.html
+node_modules/
+test-results/
+playwright-report/
+
+# Local offline library fallbacks (fetched via `npm run setup`, see README)
+math.js
+luxon.js
+plotly.min.js
+unicodeit.js

@@ -474,41 +474,30 @@ print("This will not run")
             }
 
             try {
-                // Delete existing units first if they exist
+                // Create custom units for currencies based on current rates.
+                // The API gives us: 1 USD = X EUR/GBP/AUD, so we define
+                // 1 EUR = (1/X) USD. override:true redefines the derived
+                // units in place when fresh rates arrive; the USD base unit
+                // never changes and math.js forbids overriding base units,
+                // so it is only created on the first call.
                 try {
-                    math.Unit.deleteUnit('USD');
-                    math.Unit.deleteUnit('usd');
-                    math.Unit.deleteUnit('EUR');
-                    math.Unit.deleteUnit('eur');
-                    math.Unit.deleteUnit('GBP');
-                    math.Unit.deleteUnit('gbp');
-                    math.Unit.deleteUnit('AUD');
-                    math.Unit.deleteUnit('aud');
-                    math.Unit.deleteUnit('CAD');
-                    math.Unit.deleteUnit('cad');
-                } catch(e) { /* Units don't exist yet, that's ok */ }
+                    math.evaluate('1 USD');
+                } catch (noBaseYet) {
+                    math.createUnit('USD', {}, { override: true });
+                    math.createUnit('usd', { definition: '1 USD' }, { override: true });
+                }
 
-                // Create custom units for currencies based on current rates
-                // The API gives us: 1 USD = X EUR/GBP/AUD
-                // So we need to define: 1 EUR = (1/X) USD
+                math.createUnit('EUR', { definition: `${1/exchangeRates.EUR} USD` }, { override: true });
+                math.createUnit('eur', { definition: '1 EUR' }, { override: true });
 
-                // Define base unit first (1 USD = 1 USD)
-                math.createUnit('USD');
-                math.createUnit('usd', { definition: '1 USD' });
+                math.createUnit('GBP', { definition: `${1/exchangeRates.GBP} USD` }, { override: true });
+                math.createUnit('gbp', { definition: '1 GBP' }, { override: true });
 
-                // Define other currencies with inverted rates
-                // If 1 USD = 0.8615 EUR, then 1 EUR = (1/0.8615) USD
-                math.createUnit('EUR', { definition: `${1/exchangeRates.EUR} USD` });
-                math.createUnit('eur', { definition: '1 EUR' });
+                math.createUnit('AUD', { definition: `${1/exchangeRates.AUD} USD` }, { override: true });
+                math.createUnit('aud', { definition: '1 AUD' }, { override: true });
 
-                math.createUnit('GBP', { definition: `${1/exchangeRates.GBP} USD` });
-                math.createUnit('gbp', { definition: '1 GBP' });
-
-                math.createUnit('AUD', { definition: `${1/exchangeRates.AUD} USD` });
-                math.createUnit('aud', { definition: '1 AUD' });
-
-                math.createUnit('CAD', { definition: `${1/exchangeRates.CAD} USD` });
-                math.createUnit('cad', { definition: '1 CAD' });
+                math.createUnit('CAD', { definition: `${1/exchangeRates.CAD} USD` }, { override: true });
+                math.createUnit('cad', { definition: '1 CAD' }, { override: true });
 
                 console.log('✓ Currency units created with rates:', exchangeRates);
                 return true;
@@ -1107,7 +1096,7 @@ print("This will not print")`;
 
                         // Create display element
                         timerDisplay = document.createElement('div');
-                        timerDisplay.style.cssText = 'position: fixed; top: 20px; right: 20px; background: var(--primary); color: white; padding: 1rem 1.5rem; border-radius: 8px; font-size: 1.5rem; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 1000; font-family: var(--font-mono);';
+                        timerDisplay.style.cssText = 'position: fixed; top: 20px; right: 20px; background: var(--primary); color: white; padding: 1rem 1.5rem; border-radius: 8px; font-size: 1.5rem; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 1000; font-family: var(--font-mono); pointer-events: none;';
                         document.body.appendChild(timerDisplay);
 
                         // Update display
@@ -1172,7 +1161,7 @@ print("This will not print")`;
                     // Create display element
                     if (!stopwatchDisplay) {
                         stopwatchDisplay = document.createElement('div');
-                        stopwatchDisplay.style.cssText = 'position: fixed; top: 80px; right: 20px; background: #059669; color: white; padding: 1rem 1.5rem; border-radius: 8px; font-size: 1.5rem; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 1000; font-family: var(--font-mono);';
+                        stopwatchDisplay.style.cssText = 'position: fixed; top: 80px; right: 20px; background: #059669; color: white; padding: 1rem 1.5rem; border-radius: 8px; font-size: 1.5rem; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 1000; font-family: var(--font-mono); pointer-events: none;';
                         document.body.appendChild(stopwatchDisplay);
                     }
 
@@ -1731,9 +1720,10 @@ print("This won't run")</code></pre>
                 let cleanLine = suppressOutput ? trimmedLine.slice(0, -1) : trimmedLine;
 
                 // Convert MATLAB-style commands without parentheses
-                // hold on -> hold('on'), hold off -> hold('off')
+                // hold on -> hold('on'), hold off -> hold('off'), figure -> figure()
                 cleanLine = cleanLine.replace(/\bhold\s+on\b/gi, "hold('on')");
                 cleanLine = cleanLine.replace(/\bhold\s+off\b/gi, "hold('off')");
+                cleanLine = cleanLine.replace(/^figure$/i, 'figure()');
 
                 // Escape backslashes inside latex('...') calls so math.js doesn't interpret them
                 cleanLine = cleanLine.replace(/\blatex\((['"])(.*)\1\)/g, function(match, quote, content) {
