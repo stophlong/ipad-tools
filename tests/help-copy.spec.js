@@ -12,6 +12,33 @@ test.describe('help() console reference', () => {
     expect(text).toContain('ThreeZonesNow()');
     expect(text).toContain('CL2uAzp');
   });
+
+  test("help('watch') returns only lines matching the query", async ({ page }) => {
+    await openApp(page);
+    const out = await runScript(page, "help('watch')");
+    const text = results(out)[0];
+    expect(text).toContain('stopwatchStart');
+    expect(text).not.toContain('PLOTTING');
+    expect(text).not.toContain('plot(x, y)');
+  });
+
+  test('help search is case-insensitive', async ({ page }) => {
+    await openApp(page);
+    const out = await runScript(page, "help('NATO')");
+    expect(results(out)[0]).toContain("nato('text')");
+  });
+
+  test('help search with no hits says so', async ({ page }) => {
+    await openApp(page);
+    const out = await runScript(page, "help('zzzzqqq')");
+    expect(results(out)[0]).toContain("No help entries matching 'zzzzqqq'");
+  });
+
+  test('non-string help argument shows usage', async ({ page }) => {
+    await openApp(page);
+    const out = await runScript(page, 'help(5)');
+    expect(results(out)[0]).toContain("help('text')");
+  });
 });
 
 test.describe('tap a result line to copy it', () => {

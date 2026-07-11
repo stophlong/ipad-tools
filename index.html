@@ -336,8 +336,8 @@ stopwatchStart()             # Then stopwatchStop() / stopwatchReset()
 # ===== TEXT TOOLS =====
 printf("x = %.2f\n", pi)
 nato('Hello World')          # NATO phonetic alphabet
-latex('\\alpha \\to \\beta')   # LaTeX -> Unicode: α → β (copies it)
-latex('\\sum_{i=0}^{n} x_i')  # ∑ᵢ₌₀ⁿ xᵢ
+latex('\alpha \to \beta')    # LaTeX -> Unicode: α → β (copies it)
+latex('\sum_{i=0}^{n} x_i')  # ∑ᵢ₌₀ⁿ xᵢ
 
 # ===== COCHLEAR IMPLANT (CIC4) =====
 CL2uAzp(255)                 # Current level -> µA (1750)
@@ -515,11 +515,29 @@ Shift+Enter         run           help()  this text`;
             return `built-in approximate rates from ${FALLBACK_RATES_DATE}`;
         }
 
+        // Shared AudioContext for the timer alert. iOS only allows sound
+        // from a context created/resumed inside a user gesture, and the
+        // timer expires outside one — so the user's first tap/click/key
+        // unlocks a session-wide context that the alert reuses later.
+        let audioCtx = null;
+        function ensureAudioContext() {
+            try {
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+                window.__scriptcalcAudioCtx = audioCtx; // observable in tests/console
+            } catch (e) { /* no Web Audio available */ }
+            return audioCtx;
+        }
+        ['touchend', 'click', 'keydown'].forEach(evt =>
+            document.addEventListener(evt, ensureAudioContext, { passive: true })
+        );
+
         // Timer-expiry alert: three soft rising chirps (~1.4s total).
         // Web Audio synthesized — gentler than the old sample and adjustable.
         function playAlertChirps() {
             try {
-                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const ctx = ensureAudioContext();
+                if (!ctx) return;
                 const t0 = ctx.currentTime + 0.05;
                 for (let i = 0; i < 3; i++) {
                     const start = t0 + i * 0.5;
@@ -536,7 +554,6 @@ Shift+Enter         run           help()  this text`;
                     osc.start(start);
                     osc.stop(start + 0.45);
                 }
-                setTimeout(() => { try { ctx.close(); } catch(e) {} }, 2500);
             } catch (e) {
                 console.log('Audio alert failed:', e);
             }
@@ -839,7 +856,13 @@ print("This will not print")`;
                 cosh: autoVectorize(Math.cosh),
                 tanh: autoVectorize(Math.tanh),
                 exp: autoVectorize(Math.exp),
-                log: autoVectorize(Math.log),
+                // log(x) = natural log; log(x, base) = log in that base
+                // (the help examples use log(100, 10)). Vectorized over x.
+                log: function(x, base) {
+                    if (base === undefined) return autoVectorize(Math.log)(x);
+                    const lnBase = Math.log(base);
+                    return autoVectorize(v => Math.log(v) / lnBase)(x);
+                },
                 log10: autoVectorize(Math.log10),
                 log2: autoVectorize(Math.log2),
                 sqrt: autoVectorize(Math.sqrt),
@@ -961,7 +984,9 @@ print("This will not print")`;
                     try {
                         if (typeof input !== 'string') return "Error: Input must be a string. Usage: latex('\\alpha \\to \\beta')";
                         if (!window.unicodeitLib) return "Error: unicodeit library not loaded yet. Try again in a moment.";
-                        const result = window.unicodeitLib.replace(input);
+                        // Tolerate doubled backslashes pasted from older docs
+                        const normalized = input.replace(/\\\\/g, '\\');
+                        const result = window.unicodeitLib.replace(normalized);
                         try { navigator.clipboard.writeText(result); } catch(e) { /* clipboard not available */ }
                         return result + '  (copied to clipboard)';
                     } catch(e) { return "Error: " + e.message; }
@@ -1117,9 +1142,14 @@ print("This will not print")`;
                     return originalSubtract(a, b);
                 },
 
-                // Curated in-console reference
-                help: function() {
-                    return HELP_TEXT;
+                // Curated in-console reference; help('text') searches it
+                help: function(query) {
+                    if (query === undefined || query === null || query === '') return HELP_TEXT;
+                    if (typeof query !== 'string') return "Usage: help() for the full reference, or help('text') to search it, e.g. help('watch')";
+                    const q = query.toLowerCase();
+                    const matches = HELP_TEXT.split('\n').filter(line => line.toLowerCase().includes(q));
+                    if (matches.length === 0) return `No help entries matching '${query}'. Try help() for the full reference.`;
+                    return matches.join('\n');
                 },
 
                 // Exchange rate display function
@@ -1447,6 +1477,7 @@ ThreeZones(refDay + 1 day)</code></pre>
 
     <h3>Date Formatting and Conversion</h3>
     <pre><code># Pretty date formatting
+refDay = now(Denver)
 sDen = prettydate(refDay)
 sSyd = prettydate(toZone(refDay, Sydney))
 sMech = prettydate(toZone(refDay, Mechelen))
@@ -1461,6 +1492,7 @@ StophDOB = "1971-09-24T00:00:01.000-05:00"
 age = now() - StophDOB
 
 # Date addition
+today = now(Denver)
 next_week = today + 1 week
 tomorrow = today + 1 day
 in_30_minutes = now() + 30 minutes</code></pre>
@@ -1834,6 +1866,11 @@ print("This won't run")</code></pre>
 
         function clearAll() {
             if(confirm('Clear all code?')) {
+                // Also stop and remove any running timer/stopwatch overlays
+                if (typeof math !== 'undefined') {
+                    if (math.timerCancel) math.timerCancel();
+                    if (math.stopwatchReset) math.stopwatchReset();
+                }
                 inputArea.value = '';
                 localStorage.setItem(STORAGE_KEY, '');
                 outputArea.innerHTML = '<div class="info-line">Ready.</div>';

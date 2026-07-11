@@ -45,6 +45,41 @@ test.describe('countdown timer', () => {
   });
 });
 
+test.describe('audio unlock (iOS-style autoplay policy)', () => {
+  test.beforeEach(async ({ page }) => openApp(page));
+
+  test('the first user gesture creates and resumes a shared AudioContext', async ({ page }) => {
+    // The alert reuses this context; on iOS a context created at timer
+    // expiry (outside a gesture) stays suspended and silent.
+    await runScript(page, '1 + 1'); // clicking Run is the gesture
+    const state = await page.evaluate(() =>
+      window.__scriptcalcAudioCtx && window.__scriptcalcAudioCtx.state
+    );
+    expect(state).toBe('running');
+  });
+});
+
+test.describe('header Reset button', () => {
+  test.beforeEach(async ({ page }) => openApp(page));
+
+  test('stops and removes running timer and stopwatch overlays', async ({ page }) => {
+    await runScript(page, 'timer(5 minutes)\nstopwatchStart()');
+    await expect(page.locator('body > div:has-text("⏱️")')).toHaveCount(2);
+    page.on('dialog', d => d.accept());
+    await page.click('button:has-text("Reset")');
+    await expect(page.locator('body > div:has-text("⏱️")')).toHaveCount(0);
+  });
+
+  test('removes a stopped stopwatch overlay too', async ({ page }) => {
+    // stop freezes the display on screen; Reset must clear it
+    await runScript(page, 'stopwatchStart()\nstopwatchStop()');
+    await expect(page.locator('body > div:has-text("⏱️")')).toHaveCount(1);
+    page.on('dialog', d => d.accept());
+    await page.click('button:has-text("Reset")');
+    await expect(page.locator('body > div:has-text("⏱️")')).toHaveCount(0);
+  });
+});
+
 test.describe('stopwatch', () => {
   test.beforeEach(async ({ page }) => openApp(page));
 
