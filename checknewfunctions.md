@@ -146,12 +146,52 @@ single beep. The "⏰ TIME'S UP!" banner still shows and clears itself.
 Also confirm the overlay no longer blocks clicks: while a timer is counting,
 the Run button still works (fixed in v1.1, worth re-checking with sound on).
 
-Check on: iPad (speaker) and PC. Note: browsers block audio until you've
-interacted with the page at least once, so click something first.
+Check on: **iPad, several times in a row** — this previously played only
+rarely there. The fix: your first tap anywhere in the app unlocks audio for
+the whole session, and starting a timer always involves a tap, so every
+expiry should now chirp. Check the home-screen app specifically, and also
+after locking/unlocking the iPad with the app open.
 
 ---
 
-## 8. Everything old still works
+## 8. Batch 2: iPad feedback fixes
+
+**Reset clears overlays.** Run:
+
+```
+stopwatchStart()
+stopwatchStop()
+```
+
+The frozen stopwatch overlay stays on screen. Now press the header **Reset**
+button and confirm — **expect** the stopwatch (and any running timer) to
+disappear along with the code and console.
+
+**Help search.** Run:
+
+```
+help('watch')
+help('currency')
+help('zzz')
+```
+
+**Expect:** only the stopwatch/timer lines for the first, currency lines for
+the second, and a friendly "No help entries matching 'zzz'" for the third.
+Bare `help()` still prints the whole reference.
+
+**Runnable examples.** Open the **Cheatsheet** and the full **Help** page and
+paste any code block into the input — every block now runs with zero errors
+(the automated suite pastes every one of them on each test run). In
+particular `log(100, 10)` → `2` and `log(256, 2)` → `8` (two-argument log was
+silently broken before).
+
+**LaTeX backslashes.** The cheatsheet now shows `latex('\alpha \to \beta')`
+with single backslashes — paste it and **expect** `α → β`. Pasting the old
+double-backslash form `latex('\\alpha')` also still converts.
+
+---
+
+## 9. Everything old still works
 
 Quick regression sweep — paste the whole block; every line should behave:
 

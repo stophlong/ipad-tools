@@ -14,7 +14,7 @@ It is designed to run well on:
 3. Press **Shift+Enter** or the **Run** button (▶ floating button on mobile) to execute.
 4. Results appear in the **Console** tab; plots appear in the **Graph** tab.
 
-Your code is auto-saved to the browser's `localStorage` as you type, so it survives page reloads. **Reset** clears the editor (with confirmation). **Cheatsheet** opens a quick-reference modal; **Help** opens the full documentation as an in-app overlay (works offline and in iPad home-screen app mode); `help()` prints a categorized function reference straight to the console. **Tap any result line to copy it** — handy on iPad.
+Your code is auto-saved to the browser's `localStorage` as you type, so it survives page reloads. **Reset** clears the editor (with confirmation). **Cheatsheet** opens a quick-reference modal; **Help** opens the full documentation as an in-app overlay (works offline and in iPad home-screen app mode); `help()` prints a categorized function reference straight to the console, and `help('watch')` searches it. **Tap any result line to copy it** — handy on iPad.
 
 ## Feature overview
 
@@ -152,7 +152,8 @@ Everything is in `index.html` (~1,800 lines). Reading order for future feature w
 - `latex()` clipboard copy fails silently in contexts where the Clipboard API is unavailable (e.g. non-HTTPS file:// on some browsers); the converted string is still shown.
 - Trig functions are replaced with native-JS-`Math` wrappers for speed/vectorization, so they **lose math.js unit/complex-number support** (e.g. `sin(45 deg)` no longer works — use radians).
 - Only 5 currencies are wired up; rates are all quoted against USD.
-- Timer audio (Web Audio chirps) may stay silent until the user has interacted with the page at least once — a browser autoplay rule.
+- Timer audio (Web Audio chirps) plays through a shared AudioContext that the user's first tap/click unlocks — required by iOS/browser autoplay rules; starting a timer always involves a tap, so in practice it just works.
+- Every code block in the Cheatsheet and Help page is pasted and executed by `tests/examples.spec.js`, so documentation examples cannot silently rot.
 
 ## Development & testing
 

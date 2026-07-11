@@ -77,6 +77,29 @@ test.describe('latex (unicodeit)', () => {
     const out = await runScript(page, 'latex(5)');
     expect(results(out)[0]).toContain('Input must be a string');
   });
+
+  test('tolerates doubled backslashes pasted from older docs', async ({ page }) => {
+    const out = await runScript(page, String.raw`latex('\\alpha \\to \\beta')`);
+    expect(results(out)[0]).toContain('α → β');
+  });
+});
+
+test.describe('log with optional base', () => {
+  test.beforeEach(async ({ page }) => openApp(page));
+
+  test('log(x, base) computes in that base; log(x) stays natural', async ({ page }) => {
+    const out = await runScript(page, [
+      'log(100, 10)',
+      'log(256, 2)',
+      'log(e)',
+      'log([1, e])',
+    ].join('\n'));
+    const res = results(out);
+    expect(res[0]).toBe('2');
+    expect(res[1]).toBe('8');
+    expect(res[2]).toBe('1');
+    expect(res[3]).toMatch(/0[\s\S]*1/); // vectorized: [ln 1, ln e]
+  });
 });
 
 test.describe('CIC4 cochlear implant current-level conversions', () => {
