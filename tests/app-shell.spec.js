@@ -37,6 +37,17 @@ test.describe('app shell', () => {
     await expect(page.locator('#output-area')).toContainText('Ready.');
   });
 
+  test('Help opens an in-app overlay (no popup) and closes back to the calculator', async ({ page }) => {
+    await openApp(page, { seedCode: 'x = 5' });
+    await page.click('button:has-text("Help")');
+    await expect(page.locator('#help-overlay')).toBeVisible();
+    await expect(page.locator('#help-overlay iframe')).toBeAttached();
+    expect(page.context().pages()).toHaveLength(1); // stayed in-app
+    await page.click('#help-overlay-close');
+    await expect(page.locator('#help-overlay')).toHaveCount(0);
+    await expect(page.locator('#input-area')).toHaveValue('x = 5'); // untouched
+  });
+
   test('cheatsheet modal opens and closes', async ({ page }) => {
     await openApp(page);
     await page.click('button:has-text("Cheatsheet")');

@@ -92,6 +92,16 @@ test.describe('matrix support', () => {
     expect(nums(res[1])).toEqual([1, 0, 0, 1]);
   });
 
+  test('wide numbers do not wrap matrix rows', async ({ page }) => {
+    await runScript(page, '[123456.789, 0.000012345; 9876543.21, 1]');
+    const cellTops = await page.$$eval('#output-area .res-line span', spans =>
+      spans.map(s => Math.round(s.getBoundingClientRect().top))
+    );
+    expect(cellTops).toHaveLength(4);
+    // 2x2 matrix -> cells sit on exactly two distinct baselines
+    expect(new Set(cellTops).size).toBe(2);
+  });
+
   test('small matrices render as an aligned grid, huge ones as plain text', async ({ page }) => {
     await runScript(page, 'identity(2, 2)\nzeros(21, 21)');
     const gridCount = await page.locator('#output-area .res-line div').count();

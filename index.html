@@ -178,7 +178,10 @@
             margin-top: 0.75rem; background: rgba(0,0,0,0.03);
             padding: 2px 6px; border-radius: 4px; display: inline-block;
         }
-        .res-line { padding-left: 1rem; padding-top: 0.25rem; }
+        .res-line { padding-left: 1rem; padding-top: 0.25rem; cursor: pointer; border-radius: 4px; }
+        .res-line:active { background: var(--bg-slate-100); }
+        .res-line.copied { background: #dcfce7; }
+        .res-line.copied::after { content: ' Copied ✓'; color: #059669; font-size: 0.75rem; font-weight: 600; }
         .err-line {
             color: var(--danger); background: var(--danger-bg);
             border-left: 3px solid var(--danger); padding: 0.25rem 0.5rem;
@@ -283,71 +286,64 @@
         <div class="modal-body">
             <div style="margin-bottom: 0.5rem; font-weight: 600; color: var(--text-muted); font-size: 0.8rem;">QUICK EXAMPLES</div>
             <code class="code-block" id="help-code-block">
-# Plotting (MATLAB-style, auto-vectorized)
-x = range(0, 10, 0.5)
-y = sin(x)         # sin automatically works on arrays!
-plot(x, y)
+# ===== GETTING AROUND =====
+help()             # Function reference in the console
+# Tap any result line to copy it. Shift+Enter runs.
+# 'exit' stops the script; ';' hides a line's output.
 
-# MATLAB-style figure commands
-figure             # Start new figure
+# ===== PLOTTING (MATLAB-style) =====
+figure             # Start a new figure (parens optional)
 x = range(0, 10, 0.2)
-plot(x, sin(x))
-hold on            # Add more to same figure (no parens needed!)
+plot(x, sin(x))    # sin/cos/exp/... auto-work on arrays
+hold on            # Add more traces to the same figure
 plot(x, cos(x))
-legend('Sine Wave', 'Cosine Wave')  # Label traces
+legend('Sine', 'Cosine')
 title('Sine and Cosine')
 xlabel('X Axis')
 ylabel('Y Axis')
 
-# Element-wise operators (MATLAB-style)
+# ===== MATH & MATRICES =====
 a = [1, 2, 3]
-b = [4, 5, 6]
-c = a .* b         # Element-wise multiply: [4, 10, 18]
-d = a ./ b         # Element-wise divide
-e = a .^ 2         # Element-wise power: [1, 4, 9]
-
-# Easy Date Math
-today = now(Denver)
-sDen = prettydate(today)
-printf("Denver   %s\n", sDen)
-
-# Three time zones at once
-ThreeZonesNow()    # Current time in Denver, Mechelen, Sydney
-
-# LaTeX to Unicode (copied to clipboard)
-latex('\\alpha \\to \\beta')   # Returns: α → β
-latex('\\sum_{i=0}^{n} x_i')  # Returns: ∑ᵢ₌₀ⁿ xᵢ
-latex('\\bullet \\alpha, \\beta, \\gamma, \\Gamma, \\sigma, \\Omega, \\infty, e^+, \\mu^-, \\int, \\sum, \\checkmark, A^6, m_0,  \\sfrac{3}{5},  \\pi, \\leq \\geq, \\CheckedBox')
-# gives • α, β, γ, Γ, σ, Ω, ∞, e⁺, μ⁻, ∫, ∑, ✓, A⁶, m₀,  ⅗,  π, ≤ ≥, ☑
-
-# Phonetic Alphabet
-nato('Hello World')
-
-# Currency Conversion (works like unit conversion!)
-showrates()                  # Show current rates
-1 USD in EUR                 # Get USD to EUR rate
-100 USD in EUR               # Convert 100 USD to EUR
-50 GBP in AUD                # Convert 50 GBP to AUD
-100 CAD in USD               # Convert 100 CAD to USD
-price = 25.50 EUR            # Store currency value
-price in USD                 # Convert to USD
-
-# Timer and Stopwatch
-timer(3 minutes)             # Start 3-minute countdown timer
-timer(30 seconds)            # Start 30-second timer
-timerCancel()                # Cancel running timer
-stopwatchStart()             # Start stopwatch
-stopwatchStop()              # Stop and show elapsed time
-stopwatchReset()             # Reset stopwatch
-
-# Matrix Math
-a1 = identity(2,2)
+a .* [4, 5, 6]     # Element-wise: [4, 10, 18] (also ./ and .^)
 b1 = [1, 2; 3, 4]
-c1 = a1 * b1       # Matrix multiply
-c2 = a1 .* b1      # Element-wise multiply
-inv(c1)
+b1 * b1            # Matrix multiply
+inv(b1)            # Inverse
+sqrt(2) / pi
+log(256, 2)        # Log base 2
 
-# Stop Execution - everything below 'exit' is ignored
+# ===== DATES & TIME =====
+today = now(Denver)          # Zones: Denver, Mechelen, Sydney
+prettydate(today)
+ThreeZonesNow()              # All three cities (+ Local when traveling)
+today + 1 week               # Date arithmetic
+now() - "1971-09-24T00:00:01.000-05:00"   # Human-readable age
+dateDiff("2026-01-01", "2026-12-25", 'days')
+
+# ===== CURRENCY & UNITS =====
+showrates()                  # Rates + how fresh they are
+100 USD in EUR               # USD EUR GBP AUD CAD
+price = 25.50 EUR
+price in USD
+1 kg in lbs
+25 degC in degF
+toFeetInches(180 cm)
+
+# ===== TIMERS =====
+timer(3 minutes)             # Countdown with 3-chirp alert
+timerCancel()
+stopwatchStart()             # Then stopwatchStop() / stopwatchReset()
+
+# ===== TEXT TOOLS =====
+printf("x = %.2f\n", pi)
+nato('Hello World')          # NATO phonetic alphabet
+latex('\\alpha \\to \\beta')   # LaTeX -> Unicode: α → β (copies it)
+latex('\\sum_{i=0}^{n} x_i')  # ∑ᵢ₌₀ⁿ xᵢ
+
+# ===== COCHLEAR IMPLANT (CIC4) =====
+CL2uAzp(255)                 # Current level -> µA (1750)
+uAzp2CL(1750)                # µA -> current level (255)
+
+# Everything below 'exit' is ignored
 exit
 print("This will not run")
             </code>
@@ -365,14 +361,21 @@ print("This will not run")
 
         // Exchange rate state
         let exchangeRates = null;
+        // Where the current rates came from: 'live' (fetched this session),
+        // 'cached' (localStorage from an earlier session), or 'fallback'
+        // (the built-in defaults below). Used to warn when rates are offline.
+        let rateStatus = 'fallback';
         const RATES_STORAGE_KEY = 'script_calc_exchange_rates';
         const RATES_TIMESTAMP_KEY = 'script_calc_rates_timestamp';
         const RATES_CACHE_DURATION = 3600000; // 1 hour in milliseconds
+        // Approximate rates as of FALLBACK_RATES_DATE, used only when the
+        // rates API is unreachable and nothing newer is cached.
+        const FALLBACK_RATES_DATE = '2026-07-11';
         const FALLBACK_RATES = {
             USD: 1.0,
-            EUR: 0.92,
-            GBP: 0.79,
-            AUD: 1.52,
+            EUR: 0.85,
+            GBP: 0.74,
+            AUD: 1.50,
             CAD: 1.36
         };
 
@@ -393,6 +396,51 @@ print("This will not run")
         const graphsContainer = document.getElementById('graphs-container');
         const helpModal = document.getElementById('help-modal');
         const STORAGE_KEY = 'script_calc_code';
+
+        // Curated function reference, printed to the console by help().
+        // Keep in sync with the Cheatsheet modal and the full Help page.
+        const HELP_TEXT = `ScriptCalc quick reference          (tap any result line to copy it)
+
+── PLOTTING ──────────────────────────────
+figure                     start a new figure
+plot(x, y)                 line plot; also plot([traces], layout)
+hold on / hold off         add traces to the same figure
+title('t')  xlabel('x')  ylabel('y')  legend('a','b')
+range(0, 10, 0.5)          make an array
+
+── MATH & MATRICES ───────────────────────
++ - * / ^                  (matrix * = matrix multiply)
+.*  ./  .^                 element-wise operators
+sin cos tan exp log log10 sqrt abs ...   auto-work on arrays (radians)
+[1, 2; 3, 4]   identity(n,m)   inv(m)
+
+── DATES & TIME ──────────────────────────
+now()  now(Denver)         current time (Denver/Mechelen/Sydney predefined)
+date('2026-01-01')  prettydate(d)  toZone(d, Sydney)
+dateDiff(d1, d2, 'days')
+d + 1 day    d - 90 minutes    d2 - d1   (human readable)
+ThreeZonesNow()            Denver/Mechelen/Sydney (+ Local when traveling)
+
+── CURRENCY & UNITS ──────────────────────
+100 USD in EUR             (USD EUR GBP AUD CAD; live rates, 1h cache)
+price = 25.50 EUR;  price in USD
+showrates()  refreshcurrency()  checkcurrency()
+1 kg in lbs   25 degC in degF   toFeetInches(180 cm)
+
+── TIMERS ────────────────────────────────
+timer(3 minutes)  timerCancel()
+stopwatchStart()  stopwatchStop()  stopwatchReset()
+
+── TEXT & MISC ───────────────────────────
+printf("%s = %.2f", name, x)
+nato('text')               NATO phonetic alphabet
+latex('\\alpha \\to \\beta')   LaTeX -> Unicode (copies to clipboard)
+CL2uAzp(CL)  uAzp2CL(uA)   cochlear implant current level <-> uA
+
+── SCRIPT SYNTAX ─────────────────────────
+# or % comment      trailing ;  suppress output
+exit                stop execution here
+Shift+Enter         run           help()  this text`;
 
         // Fetch exchange rates from API
         async function fetchExchangeRates() {
@@ -415,6 +463,7 @@ print("This will not run")
                 localStorage.setItem(RATES_TIMESTAMP_KEY, Date.now().toString());
 
                 exchangeRates = rates;
+                rateStatus = 'live';
                 return rates;
             } catch (error) {
                 console.warn('Failed to fetch exchange rates:', error);
@@ -428,7 +477,18 @@ print("This will not run")
             try {
                 const cached = localStorage.getItem(RATES_STORAGE_KEY);
                 if (cached) {
-                    exchangeRates = { ...FALLBACK_RATES, ...JSON.parse(cached) };
+                    const merged = { ...FALLBACK_RATES, ...JSON.parse(cached) };
+                    // Sanitize: a cache written by an older app version can
+                    // hold missing/zero/negative rates, which used to make
+                    // unit creation fail ("Undefined symbol USD") until the
+                    // file was reloaded with a fresh fetch.
+                    for (const cur of Object.keys(FALLBACK_RATES)) {
+                        if (!(typeof merged[cur] === 'number' && merged[cur] > 0)) {
+                            merged[cur] = FALLBACK_RATES[cur];
+                        }
+                    }
+                    exchangeRates = merged;
+                    rateStatus = 'cached';
                     return exchangeRates;
                 }
             } catch (e) {
@@ -436,7 +496,50 @@ print("This will not run")
             }
             // Fall back to hardcoded rates
             exchangeRates = { ...FALLBACK_RATES };
+            rateStatus = 'fallback';
             return exchangeRates;
+        }
+
+        // Human-readable provenance of the current exchange rates
+        function describeRateSource() {
+            if (rateStatus === 'live') return 'live rates fetched this session';
+            if (rateStatus === 'cached') {
+                const ts = localStorage.getItem(RATES_TIMESTAMP_KEY);
+                if (ts) {
+                    const d = new Date(parseInt(ts));
+                    const pad = n => String(n).padStart(2, '0');
+                    return `cached rates from ${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+                }
+                return 'cached rates (age unknown)';
+            }
+            return `built-in approximate rates from ${FALLBACK_RATES_DATE}`;
+        }
+
+        // Timer-expiry alert: three soft rising chirps (~1.4s total).
+        // Web Audio synthesized — gentler than the old sample and adjustable.
+        function playAlertChirps() {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const t0 = ctx.currentTime + 0.05;
+                for (let i = 0; i < 3; i++) {
+                    const start = t0 + i * 0.5;
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(659.25, start);                    // E5
+                    osc.frequency.exponentialRampToValueAtTime(880, start + 0.3);   // glide to A5
+                    gain.gain.setValueAtTime(0.0001, start);
+                    gain.gain.exponentialRampToValueAtTime(0.35, start + 0.06);     // soft attack
+                    gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.42);   // gentle decay
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start(start);
+                    osc.stop(start + 0.45);
+                }
+                setTimeout(() => { try { ctx.close(); } catch(e) {} }, 2500);
+            } catch (e) {
+                console.log('Audio alert failed:', e);
+            }
         }
 
         // Get exchange rates (with caching)
@@ -910,7 +1013,10 @@ print("This will not print")`;
                 ThreeZones: function(time_stamp) {
                     try {
                         const refDay = time_stamp;
-                        const sDen = math.prettydate(refDay);
+                        // Convert every line explicitly: when traveling, the
+                        // device zone is not Denver, so the raw input must
+                        // not be labeled as Denver time.
+                        const sDen = math.prettydate(math.toZone(refDay, 'America/Denver'));
                         const sSyd = math.prettydate(math.toZone(refDay, 'Australia/Sydney'));
                         const sMech = math.prettydate(math.toZone(refDay, 'Europe/Brussels'));
                         return math.printf("Denver   %s\nMechelen %s\nSydney   %s\n", sDen, sMech, sSyd);
@@ -919,7 +1025,16 @@ print("This will not print")`;
 
                 ThreeZonesNow: function() {
                     try {
-                        return math.ThreeZones(math.now());
+                        const nowIso = math.now();
+                        let result = math.ThreeZones(nowIso);
+                        // Traveling? Add the device's local time when it is
+                        // not already one of the three cities.
+                        const deviceZone = DateTime.now().zoneName;
+                        const cityZones = ['America/Denver', 'Europe/Brussels', 'Australia/Sydney'];
+                        if (!cityZones.includes(deviceZone)) {
+                            result += math.printf("Local    %s (%s)\n", math.prettydate(nowIso), deviceZone);
+                        }
+                        return result;
                     } catch(e) { return "Error: " + e.message; }
                 },
 
@@ -1002,6 +1117,11 @@ print("This will not print")`;
                     return originalSubtract(a, b);
                 },
 
+                // Curated in-console reference
+                help: function() {
+                    return HELP_TEXT;
+                },
+
                 // Exchange rate display function
                 showrates: function() {
                     try {
@@ -1020,7 +1140,8 @@ print("This will not print")`;
                                `  EUR: ${exchangeRates.EUR.toFixed(4)}\n` +
                                `  GBP: ${exchangeRates.GBP.toFixed(4)}\n` +
                                `  AUD: ${exchangeRates.AUD.toFixed(4)}\n` +
-                               `  CAD: ${exchangeRates.CAD.toFixed(4)}`;
+                               `  CAD: ${exchangeRates.CAD.toFixed(4)}\n` +
+                               `  Source: ${describeRateSource()}`;
                     } catch(e) { return "Error: " + e.message; }
                 },
 
@@ -1106,9 +1227,7 @@ print("This will not print")`;
                                 clearInterval(timerInterval);
                                 timerDisplay.textContent = '⏰ TIME\'S UP!';
                                 timerDisplay.style.background = '#dc2626';
-                                // Play alert sound
-                                const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuFzvDiimMOGVqz6+OoWBkMQ6z0yoVECBFi0N+mYBwGNIzV8ct4LQUtfMnw3Y9ACBNRXL7o56lWGAo9n+DywHYjBCSG0O/jjGUPGWC26uqnWBkKQK7wyYVGCBBlz9yqYR0GNIvT8sx5LwUufMnw3Y9ACBNRXL7o56lWGAo9n+DywHYjBCSG0O/jjGUPGWC26uqnWBkKP67wyYVGCBBlz9yqYR0GM4vT8sx5LwUufMnw3Y9ACBNRXL7o56lWGAo9n+DywHYjBCSG0O/jjGUPGWC26uqnWBkKP67wyYVGCBBlz9yqYR0GM4vT8sx5LwUufMnw3Y9ACBNRXL7o56lWGAo9n+DywHYjBCSG0O/jjGUPGWC26uqnWBkKP67wyYVGCBBlz9yqYR0GM4vT8sx5LwUufMnw3Y9ACBNRXL7o56lWGAo9n+DywHYjBCSG0O/jjGUPGWC26uqnWBkKP67wyYVGCBBlz9yqYR0GM4vT8sx5LwUufMnw3Y9ACBNRXL7o56lWGAo9n+DywHYjBCSG0O/jjGUPGWC26uqnWBkKP67wyYVGCBBlz9yqYR0GM4vT8sx5LwUufMnw3Y9ACBNRXL7o56lWGAo9n+DywHYjBCSG0O/jjGUPGWC26uqnWBkKP67wyYVGCBBlz9yqYR0GM4vT8sx5LwUufMnw3Y9ACBNRXL7o56lWGAo9n+DywHYjBCSG0O/jjGUPGWC26uqnWBkKP67wyYVGCBBlz9yqYR0GM4vT8sx5LwUufMnw3Y9ACBNRXL7o56lWGAo9n+DywHYjBCSG0O/jjGUPGWC26uqnWBkKP67wyYVGCBBlz9yqYR0GM4vT8sx5LwUufMnw3Y9ACBNRXL7o56lWGAo9n+DywHYjBCSG0O/jjGUPGWC26uqnWBkKP67wyYVGCBBlz9yqYR0GM4vT8sx5LwUufMnw3Y9ACBNRXL7o56lWGAo9n+DywHYjBCSG0O/jjGUPGWC26uqnWBkKP67wyYVGCBBlz9yqYR0GM4vT8sx5LwUu');
-                                audio.play().catch(e => console.log('Audio play failed:', e));
+                                playAlertChirps();
                                 // Remove after 3 seconds
                                 setTimeout(() => {
                                     if (timerDisplay) timerDisplay.remove();
@@ -1634,14 +1753,83 @@ print("This won't run")</code></pre>
 </body>
 </html>`;
 
-            const helpWindow = window.open('', '_blank');
-            helpWindow.document.write(helpContent);
-            helpWindow.document.close();
+            // Render in-app (window.open traps iPad home-screen app mode
+            // with no way back, and popup blockers can eat it entirely).
+            let overlay = document.getElementById('help-overlay');
+            if (!overlay) {
+                overlay = document.createElement('div');
+                overlay.id = 'help-overlay';
+                overlay.style.cssText = 'position:fixed; inset:0; z-index:2000; background:var(--bg-body); display:flex; flex-direction:column;';
+
+                const bar = document.createElement('div');
+                bar.style.cssText = 'flex-shrink:0; display:flex; justify-content:space-between; align-items:center; padding:0.5rem 1rem; background:var(--bg-white); border-bottom:1px solid var(--border-color);';
+                const title = document.createElement('strong');
+                title.textContent = '📘 ScriptCalc Help';
+                const closeBtn = document.createElement('button');
+                closeBtn.className = 'btn btn-primary';
+                closeBtn.id = 'help-overlay-close';
+                closeBtn.textContent = '✕ Back to Calculator';
+                closeBtn.onclick = () => overlay.remove();
+                bar.appendChild(title);
+                bar.appendChild(closeBtn);
+
+                const frame = document.createElement('iframe');
+                frame.style.cssText = 'flex:1; border:none; width:100%;';
+                frame.srcdoc = helpContent;
+
+                overlay.appendChild(bar);
+                overlay.appendChild(frame);
+                document.body.appendChild(overlay);
+            }
         }
 
         helpModal.addEventListener('click', (e) => {
             const rect = helpModal.getBoundingClientRect();
             if (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) helpModal.close();
+        });
+
+        // --- Tap/click a result line to copy it (iPad-friendly) ---
+        function copyViaExecCommand(text) {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.cssText = 'position:fixed; opacity:0;';
+            document.body.appendChild(ta);
+            ta.select();
+            try { document.execCommand('copy'); } catch(e) { /* best effort */ }
+            ta.remove();
+        }
+
+        function copyTextToClipboard(text) {
+            // Clipboard API needs a secure context; execCommand covers
+            // file:// on the PC and older Safari.
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).catch(() => copyViaExecCommand(text));
+            } else {
+                copyViaExecCommand(text);
+            }
+        }
+
+        outputArea.addEventListener('click', (e) => {
+            if (e.target.closest('a')) return; // graph links keep their own click
+            const line = e.target.closest('.res-line');
+            if (!line) return;
+            // Prefer the bare result value; matrices copy their cells
+            // space-separated; anything else copies its visible text.
+            const valSpan = line.querySelector('.result-val');
+            let text;
+            if (valSpan) {
+                text = valSpan.textContent;
+            } else {
+                const spans = line.querySelectorAll('span');
+                text = spans.length
+                    ? Array.from(spans).map(s => s.textContent).join(' ')
+                    : line.textContent;
+            }
+            text = (text || '').trim();
+            if (!text) return;
+            copyTextToClipboard(text);
+            line.classList.add('copied');
+            setTimeout(() => line.classList.remove('copied'), 900);
         });
 
         function clearAll() {
@@ -1658,21 +1846,20 @@ print("This won't run")</code></pre>
                 const size = matrixObj.size();
                 if (size.length > 2 || size[0] > 20 || size[1] > 20) return null;
                 const arr = matrixObj.toArray();
-                let html = '<div style="display:inline-block; background:rgba(226,232,240,0.5); border-radius:4px; padding:4px 8px; vertical-align:top; color:#334155;">';
-                arr.forEach((row, i) => {
-                    html += '<div style="display:flex; gap:1rem;">';
-                    if (Array.isArray(row)) {
-                        row.forEach(val => {
-                             let s = math.format(val, { precision: 5, lowerExp: -5, upperExp: 5 });
-                             html += `<span style="flex:1; text-align:right;">${s}</span>`;
-                        });
-                    } else {
-                        let s = math.format(row, { precision: 5 });
-                        html += `<span style="flex:1; text-align:right;">${s}</span>`;
-                    }
-                    html += '</div>';
+                // Columns size to their widest value (max-content) and cells
+                // never wrap; a scroll wrapper handles overly wide matrices.
+                const nCols = Array.isArray(arr[0]) ? arr[0].length : 1;
+                let html = '<div style="max-width:100%; overflow-x:auto;">';
+                html += `<div style="display:inline-grid; grid-template-columns:repeat(${nCols}, max-content); column-gap:1rem; background:rgba(226,232,240,0.5); border-radius:4px; padding:4px 8px; color:#334155;">`;
+                const cell = val => {
+                    const s = math.format(val, { precision: 5, lowerExp: -5, upperExp: 5 });
+                    return `<span style="text-align:right; white-space:nowrap;">${s}</span>`;
+                };
+                arr.forEach(row => {
+                    if (Array.isArray(row)) row.forEach(val => { html += cell(val); });
+                    else html += cell(row);
                 });
-                html += '</div>';
+                html += '</div></div>';
                 return html;
             } catch(e) { return null; }
         }
@@ -1689,6 +1876,18 @@ print("This won't run")</code></pre>
 
         function runCalculation() {
             if (typeof math === 'undefined' || typeof luxon === 'undefined') return;
+
+            // Currency units can be missing if startup raced (slow network
+            // or library load) or an old cache held invalid rates. Ensure
+            // they exist before running so '100 USD in EUR' never fails
+            // with "Undefined symbol USD" on the first attempt.
+            try {
+                math.evaluate('1 USD');
+            } catch (unitsMissing) {
+                if (!exchangeRates) loadCachedRates();
+                createCurrencyUnits();
+            }
+
             const code = inputArea.value;
             const lines = code.split('\n');
             parser.clear();
@@ -1778,6 +1977,12 @@ print("This won't run")</code></pre>
                     hasOutput = true;
                 }
             } // end loop
+
+            // Tell the user when currency math ran on non-live rates
+            if (rateStatus !== 'live' && /\b(USD|EUR|GBP|AUD|CAD)\b/i.test(code)) {
+                addOutputLine(`⚠ Offline exchange rates in use (${describeRateSource()})`, 'info');
+                hasOutput = true;
+            }
 
             // Render any pending figure at end of execution
             if (currentFigure && currentFigure.traces.length > 0) {

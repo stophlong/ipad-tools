@@ -19,8 +19,9 @@ const CDN_HOSTS = ['cdnjs.cloudflare.com', 'cdn.plot.ly', 'esm.sh'];
  *
  * @param {import('@playwright/test').Page} page
  * @param {object} [opts]
- * @param {object|'fail'} [opts.rates] fixture rates object, or 'fail' to
- *        simulate the exchange-rate API being unreachable
+ * @param {object|'fail'|'slow'} [opts.rates] fixture rates object, 'fail' to
+ *        simulate the exchange-rate API being unreachable, or 'slow' to
+ *        delay its answer past the first user interaction
  * @param {string|null} [opts.seedCode] initial editor content placed in
  *        localStorage before load; null = genuine first visit (default code)
  */
@@ -30,8 +31,13 @@ async function openApp(page, opts = {}) {
   for (const host of CDN_HOSTS) {
     await page.route(`https://${host}/**`, route => route.abort());
   }
-  await page.route('https://open.er-api.com/**', route => {
+  await page.route('https://open.er-api.com/**', async route => {
     if (rates === 'fail') return route.abort();
+    if (rates === 'slow') {
+      // Answer only after the user has had time to run their first script.
+      await new Promise(r => setTimeout(r, 4000));
+      return route.fulfill({ json: { result: 'success', rates: FIXTURE_RATES } });
+    }
     return route.fulfill({ json: { result: 'success', rates } });
   });
 
