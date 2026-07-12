@@ -20,8 +20,8 @@ help()
 DATES & TIME / CURRENCY & UNITS / TIMERS / TEXT & MISC / SCRIPT SYNTAX)
 printed as a console result.
 
-Also click the **Cheatsheet** button — the examples are reorganized into the
-same categories and every block should run if you paste it in.
+(The Cheatsheet button has since been retired — its content now lives in
+the Help page and `help()` itself; see section 10.)
 
 ---
 
@@ -179,13 +179,13 @@ help('zzz')
 the second, and a friendly "No help entries matching 'zzz'" for the third.
 Bare `help()` still prints the whole reference.
 
-**Runnable examples.** Open the **Cheatsheet** and the full **Help** page and
+**Runnable examples.** Open the full **Help** page and
 paste any code block into the input — every block now runs with zero errors
 (the automated suite pastes every one of them on each test run). In
 particular `log(100, 10)` → `2` and `log(256, 2)` → `8` (two-argument log was
 silently broken before).
 
-**LaTeX backslashes.** The cheatsheet now shows `latex('\alpha \to \beta')`
+**LaTeX backslashes.** The help examples now show `latex('\alpha \to \beta')`
 with single backslashes — paste it and **expect** `α → β`. Pasting the old
 double-backslash form `latex('\\alpha')` also still converts.
 
@@ -215,16 +215,35 @@ Your own variables stay case-sensitive on purpose (`Foo` and `foo` are
 different), and text inside quotes is never rewritten. This should largely
 neutralize iPad autocapitalization annoyances.
 
-**Build timestamp.** Run `help()` and look at the last line, open the
-**Cheatsheet** (bottom line), or scroll the **Help** page to the bottom —
-all three show `ScriptCalc build <date time>`. After any future merge,
+**Build timestamp.** Run `help()` and look at the last line, or scroll the
+**Help** page to the bottom — both show `ScriptCalc build <date time>`. After any future merge,
 re-download/refresh and check this stamp to confirm you actually got the
 new version (this answers the "I merged but don't see a change" mystery:
 if the stamp is old, your device is still loading an old copy).
 
 ---
 
-## 10. Everything old still works
+## 10. Batch 4: complete Help sheets, Cheatsheet retired
+
+**Coverage.** Run `help()` — it now includes a "Getting Around" section at
+the top (help/help-search, tap-to-copy, `;`, `exit`, case tolerance), a
+"LaTeX to Unicode" section with the `latex()` examples, `dateDiff`/`date()`
+in Date Arithmetic, `checkcurrency()`/`refreshcurrency()` under Currency
+(with a note on the `showrates()` Source line), the full list of
+auto-vectorized functions under Mathematics, and a "Library Documentation"
+section with links to the math.js, Luxon, Plotly.js, and unicodeit docs
+(clickable in the Help overlay; plain URLs in `help()`).
+
+**Cheatsheet is gone.** The header now has just Help / Reset / Run. Verify
+nothing you relied on from the old Cheatsheet is missing from Help — if
+something is, tell Claude and it goes into the Help page (the single source).
+
+**Search checks:** `help('latex')`, `help('library')`, and `help('copy')`
+should each return the relevant new lines.
+
+---
+
+## 11. Everything old still works
 
 Quick regression sweep — paste the whole block; every line should behave:
 

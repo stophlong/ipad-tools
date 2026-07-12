@@ -6,11 +6,18 @@ test.describe('help() console reference', () => {
     await openApp(page);
     const out = await runScript(page, 'help()');
     const text = results(out)[0];
-    for (const section of ['Plotting', 'Date & Time', 'Timer & Stopwatch', 'Matrix', 'Currency', 'CIC4']) {
+    for (const section of ['Getting Around', 'Plotting', 'Date & Time', 'Timer & Stopwatch', 'Matrix', 'Currency', 'CIC4', 'Library Documentation']) {
       expect(text).toContain(section);
     }
     expect(text).toContain('ThreeZonesNow()');
     expect(text).toContain('CL2uAzp');
+    // previously-missing functions are now documented
+    expect(text).toContain('latex(');
+    expect(text).toContain('help(');
+    expect(text).toContain('dateDiff(');
+    expect(text).toContain('checkcurrency()');
+    expect(text).toContain('showrates()');
+    expect(text).toContain('mathjs.org');
     // headings arrive as comments so the whole output is pasteable
     expect(text).toContain('# =====');
     expect(text).not.toContain('Complete Example Session');
@@ -38,6 +45,12 @@ test.describe('help() console reference', () => {
     expect(text).toContain('stopwatchStart');
     expect(text).not.toContain('PLOTTING');
     expect(text).not.toContain('plot(x, y)');
+  });
+
+  test("help('latex') finds the LaTeX examples", async ({ page }) => {
+    await openApp(page);
+    const out = await runScript(page, "help('latex')");
+    expect(results(out)[0]).toContain("latex('\\alpha");
   });
 
   test('help search is case-insensitive', async ({ page }) => {

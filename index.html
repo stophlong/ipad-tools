@@ -201,17 +201,6 @@
             align-items: center; justify-content: center; z-index: 30; cursor: pointer;
         }
 
-        /* Dialog/Modal */
-        dialog {
-            border: none; border-radius: 0.5rem; padding: 0;
-            max-width: 600px; width: 95%;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-        }
-        dialog::backdrop { background: rgba(15, 23, 42, 0.5); backdrop-filter: blur(2px); }
-        .modal-header { padding: 1.5rem; display: flex; justify-content: space-between; align-items: center; }
-        .modal-body { padding: 0 1.5rem 1.5rem 1.5rem; max-height: 70vh; overflow-y: auto; }
-        .code-block { background: #1e293b; color: #e2e8f0; padding: 0.75rem; border-radius: 0.375rem; font-family: var(--font-mono); font-size: 0.75rem; margin-bottom: 0.5rem; display: block; white-space: pre-wrap; }
-        
         @media (max-width: 768px) {
             main { flex-direction: column; }
             .input-panel { height: 50%; border-right: none; border-bottom: 1px solid var(--border-color); }
@@ -231,7 +220,6 @@
         </div>
         <div class="flex gap-2">
              <button onclick="showFullHelp()" class="btn btn-ghost">Help</button>
-             <button onclick="showCheatsheet()" class="btn btn-ghost">Cheatsheet</button>
              <button onclick="clearAll()" class="btn btn-ghost btn-danger">Reset</button>
             <button onclick="runCalculation()" class="btn btn-primary desktop-run-btn">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
@@ -277,79 +265,6 @@
         </section>
     </main>
 
-    <!-- Cheatsheet Modal -->
-    <dialog id="help-modal">
-        <div class="modal-header">
-            <h2 style="margin:0; font-size:1.125rem;">Quick Reference Cheatsheet</h2>
-            <button onclick="closeCheatsheet()" class="btn btn-ghost" style="padding:0.25rem;">✕</button>
-        </div>
-        <div class="modal-body">
-            <div style="margin-bottom: 0.5rem; font-weight: 600; color: var(--text-muted); font-size: 0.8rem;">QUICK EXAMPLES</div>
-            <code class="code-block" id="help-code-block">
-# ===== GETTING AROUND =====
-help()             # Function reference in the console
-# Tap any result line to copy it. Shift+Enter runs.
-# 'exit' stops the script; ';' hides a line's output.
-
-# ===== PLOTTING (MATLAB-style) =====
-figure             # Start a new figure (parens optional)
-x = range(0, 10, 0.2)
-plot(x, sin(x))    # sin/cos/exp/... auto-work on arrays
-hold on            # Add more traces to the same figure
-plot(x, cos(x))
-legend('Sine', 'Cosine')
-title('Sine and Cosine')
-xlabel('X Axis')
-ylabel('Y Axis')
-
-# ===== MATH & MATRICES =====
-a = [1, 2, 3]
-a .* [4, 5, 6]     # Element-wise: [4, 10, 18] (also ./ and .^)
-b1 = [1, 2; 3, 4]
-b1 * b1            # Matrix multiply
-inv(b1)            # Inverse
-sqrt(2) / pi
-log(256, 2)        # Log base 2
-
-# ===== DATES & TIME =====
-today = now(Denver)          # Zones: Denver, Mechelen, Sydney
-prettydate(today)
-ThreeZonesNow()              # All three cities (+ Local when traveling)
-today + 1 week               # Date arithmetic
-now() - "1971-09-24T00:00:01.000-05:00"   # Human-readable age
-dateDiff("2026-01-01", "2026-12-25", 'days')
-
-# ===== CURRENCY & UNITS =====
-showrates()                  # Rates + how fresh they are
-100 USD in EUR               # USD EUR GBP AUD CAD
-price = 25.50 EUR
-price in USD
-1 kg in lbs
-25 degC in degF
-toFeetInches(180 cm)
-
-# ===== TIMERS =====
-timer(3 minutes)             # Countdown with 3-chirp alert
-timerCancel()
-stopwatchStart()             # Then stopwatchStop() / stopwatchReset()
-
-# ===== TEXT TOOLS =====
-printf("x = %.2f\n", pi)
-nato('Hello World')          # NATO phonetic alphabet
-latex('\alpha \to \beta')    # LaTeX -> Unicode: α → β (copies it)
-latex('\sum_{i=0}^{n} x_i')  # ∑ᵢ₌₀ⁿ xᵢ
-
-# ===== COCHLEAR IMPLANT (CIC4) =====
-CL2uAzp(255)                 # Current level -> µA (1750)
-uAzp2CL(1750)                # µA -> current level (255)
-
-# Everything below 'exit' is ignored
-exit
-print("This will not run")
-            </code>
-            <div id="cheatsheet-version" style="margin-top:0.75rem; font-size:0.75rem; color:var(--text-muted);"></div>
-        </div>
-    </dialog>
 
     <script>
         // --- JS Logic ---
@@ -395,13 +310,12 @@ print("This will not run")
         const inputArea = document.getElementById('input-area');
         const outputArea = document.getElementById('output-area');
         const graphsContainer = document.getElementById('graphs-container');
-        const helpModal = document.getElementById('help-modal');
         const STORAGE_KEY = 'script_calc_code';
 
         // Version stamp — bump whenever index.html changes. Shown at the end
-        // of help(), in the Cheatsheet, and at the bottom of the Help page,
-        // so any device can tell which build it is running.
-        const APP_BUILD = '2026-07-12 00:05 UTC';
+        // of help() and at the bottom of the Help page, so any device can
+        // tell which build it is running.
+        const APP_BUILD = '2026-07-12 03:30 UTC';
 
         // help() output is generated from the same HTML the Help overlay
         // shows (HELP_PAGE_HTML, defined further down): headings become
@@ -1438,12 +1352,6 @@ print("This will not print")`;
             }
         });
 
-        function showCheatsheet() {
-            document.getElementById('cheatsheet-version').textContent = 'ScriptCalc build ' + APP_BUILD;
-            helpModal.showModal();
-        }
-        function closeCheatsheet() { helpModal.close(); }
-
         // The complete Help document, rendered in the Help overlay and also
         // the single source for help()'s runnable console text.
         const HELP_PAGE_HTML = `<!DOCTYPE html>
@@ -1476,6 +1384,19 @@ print("This will not print")`;
     </div>
 
     <button class="copy-btn" onclick="copyAllExamples()">📋 Copy All Examples</button>
+
+    <h2>🧭 Getting Around</h2>
+    <pre><code># Built-in help
+help()             # This document, as runnable text in the console
+help('watch')      # Search it: lines mentioning 'watch'
+
+# Editor & console basics
+# - Shift+Enter runs the script (or the Run button; round button on mobile)
+# - Tap/click any result line to copy it
+# - A trailing ; suppresses that line's output
+# - 'exit' on its own line stops the script there
+# - Known names are case-tolerant: NATO('sos') and 100 degf in degc work
+6 * 7              # Results appear in the Console tab; plots in Graph</code></pre>
 
     <h2>📊 Plotting (MATLAB-Style)</h2>
 
@@ -1543,7 +1464,11 @@ age = now() - StophDOB
 today = now(Denver)
 next_week = today + 1 week
 tomorrow = today + 1 day
-in_30_minutes = now() + 30 minutes</code></pre>
+in_30_minutes = now() + 30 minutes
+
+# Difference in a chosen unit, and ISO date validation/normalization
+dateDiff("2026-01-01", "2026-12-25", 'days')
+date('2026-06-15')</code></pre>
 
     <h2>⏱️ Timer & Stopwatch</h2>
 
@@ -1606,7 +1531,12 @@ showrates()
 
 # Store and convert
 price = 25.50 EUR
-price in USD</code></pre>
+price in USD
+
+# Diagnostics — showrates() ends with a Source line saying whether
+# rates are live, cached (with their date), or built-in defaults
+checkcurrency()    # Verify every currency unit works
+refreshcurrency()  # Rebuild units from the current rates</code></pre>
 
     <h2>📏 Unit Conversions</h2>
 
@@ -1658,6 +1588,12 @@ format(val, {precision: 2, notation: "fixed"})    # "12.35"
 # Pretty date
 prettydate(now())</code></pre>
 
+    <h3>LaTeX to Unicode</h3>
+    <pre><code># latex() converts LaTeX to Unicode (and copies it to the clipboard)
+latex('\\alpha \\to \\beta')
+latex('\\sum_{i=0}^{n} x_i')
+latex('\\bullet \\alpha, \\beta, \\Omega, \\infty, e^+, \\mu^-, \\int, \\checkmark, A^6, m_0, \\pi, \\leq \\geq')</code></pre>
+
     <h2>🧮 Mathematics</h2>
 
     <h3>Basic Operations</h3>
@@ -1674,7 +1610,11 @@ log(e)             # Natural log (ln)
 # Trigonometry on arrays (auto-vectorized!)
 angles = range(0, pi, 0.1)
 sines = sin(angles)
-cosines = cos(angles)</code></pre>
+cosines = cos(angles)
+
+# All auto-vectorized functions (scalars or arrays; angles in radians):
+# sin cos tan asin acos atan sinh cosh tanh exp log log10 log2 sqrt abs sign
+abs([-2, 3, -4])</code></pre>
 
     <h3>Special Functions (CIC4 Units)</h3>
     <pre><code># Charge calculations
@@ -1708,6 +1648,21 @@ exit
 # Everything below exit is ignored
 print("This will not run")
 x = 100  # This won't execute</code></pre>
+
+    <h2>📚 Library Documentation</h2>
+    <p>ScriptCalc is built on these libraries — their documentation covers far more than this page:</p>
+    <ul>
+        <li><a href="https://mathjs.org/docs/index.html" target="_blank" rel="noopener">math.js</a> — expression syntax, units, matrices (<a href="https://mathjs.org/docs/reference/functions.html" target="_blank" rel="noopener">full function reference</a>)</li>
+        <li><a href="https://moment.github.io/luxon/#/" target="_blank" rel="noopener">Luxon</a> — dates, times, and timezones</li>
+        <li><a href="https://plotly.com/javascript/" target="_blank" rel="noopener">Plotly.js</a> — plotting; raw trace objects work in <code>plot([traces], layout)</code></li>
+        <li><a href="https://github.com/svenkreiss/unicodeit" target="_blank" rel="noopener">unicodeit</a> — the <code>latex()</code> LaTeX→Unicode converter</li>
+    </ul>
+    <pre><code># Library documentation links
+# math.js (math, units, matrices)   https://mathjs.org/docs/index.html
+# math.js function reference        https://mathjs.org/docs/reference/functions.html
+# Luxon (dates & timezones)         https://moment.github.io/luxon/#/
+# Plotly.js (graphs)                https://plotly.com/javascript/
+# unicodeit (latex() converter)     https://github.com/svenkreiss/unicodeit</code></pre>
 
     <h2>📚 Complete Example Session</h2>
     <pre id="all-examples"><code># ========================================
@@ -1866,11 +1821,6 @@ print("This won't run")</code></pre>
                 document.body.appendChild(overlay);
             }
         }
-
-        helpModal.addEventListener('click', (e) => {
-            const rect = helpModal.getBoundingClientRect();
-            if (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) helpModal.close();
-        });
 
         // --- Tap/click a result line to copy it (iPad-friendly) ---
         function copyViaExecCommand(text) {
