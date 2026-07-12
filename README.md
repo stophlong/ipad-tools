@@ -14,7 +14,7 @@ It is designed to run well on:
 3. Press **Shift+Enter** or the **Run** button (▶ floating button on mobile) to execute.
 4. Results appear in the **Console** tab; plots appear in the **Graph** tab.
 
-Your code is auto-saved to the browser's `localStorage` as you type, so it survives page reloads. **Reset** clears the editor (with confirmation). **Cheatsheet** opens a quick-reference modal; **Help** opens the full documentation as an in-app overlay (works offline and in iPad home-screen app mode); `help()` prints the same document as runnable console text — headings become comments, so the whole output can be pasted back into the input — and `help('watch')` searches it. Both end with a `ScriptCalc build <timestamp>` stamp (also shown in the Cheatsheet) so you can always tell which version a device is running. Known function names and common constants/units (`degC`/`degF`, city zones, currencies, `pi`) are **case-tolerant** — `NATO('sos')` or `100 degf in degc` just work — while your own variables stay case-sensitive and quoted strings are never rewritten. **Tap any result line to copy it** — handy on iPad.
+Your code is auto-saved to the browser's `localStorage` as you type, so it survives page reloads. **Reset** clears the editor (with confirmation). **Help** opens the full documentation as an in-app overlay (works offline and in iPad home-screen app mode); `help()` prints the same document as runnable console text — headings become comments, so the whole output can be pasted back into the input — and `help('watch')` searches it. Both end with a `ScriptCalc build <timestamp>` stamp so you can always tell which version a device is running, and the Help page links out to the math.js, Luxon, Plotly, and unicodeit documentation. Known function names and common constants/units (`degC`/`degF`, city zones, currencies, `pi`) are **case-tolerant** — `NATO('sos')` or `100 degf in degc` just work — while your own variables stay case-sensitive and quoted strings are never rewritten. **Tap any result line to copy it** — handy on iPad.
 
 ## Feature overview
 
@@ -129,7 +129,7 @@ Everything is in `index.html` (~1,800 lines). Reading order for future feature w
 |---|---|---|
 | **Loader & fallback logic** | `<head>`, top | `window.loadFallback` swaps a failed CDN `<script>` for its local twin; `window.scriptErrors` feeds the missing-files diagnostic UI |
 | **Styles** | `<style>` in `<head>` | CSS variables, split-pane layout, tabs, modal, mobile breakpoint at 768px (stacked panes + FAB) |
-| **Markup** | `<body>` | Header buttons, input `<textarea>`, output panel with Console/Graph tabs, cheatsheet `<dialog>` |
+| **Markup** | `<body>` | Header buttons, input `<textarea>`, output panel with Console/Graph tabs |
 | **Currency subsystem** | top of main `<script>` | `fetchExchangeRates` → `localStorage` cache → `createCurrencyUnits` (defines `USD/EUR/GBP/AUD/CAD` + lowercase aliases as math.js units, deleting old definitions first) |
 | **Figure state & rendering** | after currency code | `currentFigure` / `holdState` module globals, `createNewFigure()`, `renderFigure()` (appends a labeled Plotly div to `#graphs-container`), `jumpToGraph()` |
 | **`initMath()`** | middle | The heart of the app: one big `math.import({...}, {override: true})` call registering every custom function (plotting commands, auto-vectorized math, dates, currency helpers, timers, `nato`, `latex`, `printf`, …). Runs once dependencies are polled ready, then creates the persistent `math.parser()` |
@@ -153,7 +153,7 @@ Everything is in `index.html` (~1,800 lines). Reading order for future feature w
 - Trig functions are replaced with native-JS-`Math` wrappers for speed/vectorization, so they **lose math.js unit/complex-number support** (e.g. `sin(45 deg)` no longer works — use radians).
 - Only 5 currencies are wired up; rates are all quoted against USD.
 - Timer audio (Web Audio chirps) plays through a shared AudioContext that the user's first tap/click unlocks — required by iOS/browser autoplay rules; starting a timer always involves a tap, so in practice it just works.
-- Every code block in the Cheatsheet and Help page is pasted and executed by `tests/examples.spec.js`, so documentation examples cannot silently rot.
+- Every code block in the Help page is pasted and executed by `tests/examples.spec.js`, so documentation examples cannot silently rot.
 
 ## Development & testing
 
@@ -186,7 +186,7 @@ Test map (`tests/`):
 | `timers.spec.js` | countdown timer and stopwatch lifecycles |
 | `app-shell.spec.js` | default code, persistence, Shift+Enter, Reset, Help overlay, missing-libs diagnostic |
 
-**Working agreement for new features (TDD):** write the failing spec first (or extend an existing spec file), then implement in `index.html`, then run `npm test`. Refactors of `index.html` are only done under green tests. **Every change to `index.html` must bump the `APP_BUILD` constant** near the top of the script — it's how devices identify which version they're running (`help()` footer, Cheatsheet, Help page).
+**Working agreement for new features (TDD):** write the failing spec first (or extend an existing spec file), then implement in `index.html`, then run `npm test`. Refactors of `index.html` are only done under green tests. **Every change to `index.html` must bump the `APP_BUILD` constant** near the top of the script — it's how devices identify which version they're running (`help()` footer and the bottom of the Help page).
 
 ## Repo layout
 

@@ -6,22 +6,15 @@ const { openApp, runScript, errors, results } = require('./helpers');
 // the suite instead of failing the user.
 
 test.describe('documentation examples are runnable', () => {
-  test('the cheatsheet block runs with no errors', async ({ page }) => {
+  test('Help-page latex examples use single backslashes', async ({ page }) => {
     await openApp(page);
-    await page.click('button:has-text("Cheatsheet")');
-    const code = await page.locator('#help-code-block').textContent();
-    await page.keyboard.press('Escape'); // close the dialog
-    expect(code.trim().length).toBeGreaterThan(100);
-    const out = await runScript(page, code);
-    expect(errors(out)).toEqual([]);
-    await runScript(page, 'timerCancel()\nstopwatchReset()');
-  });
-
-  test('cheatsheet latex examples use single backslashes', async ({ page }) => {
-    await openApp(page);
-    const code = await page.locator('#help-code-block').textContent();
-    expect(code).toContain("latex('\\alpha \\to \\beta')"); // one backslash each in page text
-    expect(code).not.toContain('\\\\alpha');                // never doubled
+    await page.click('button:has-text("Help")');
+    const frame = page.frameLocator('#help-overlay iframe');
+    const blocks = await frame.locator('pre code').allTextContents();
+    const latexBlock = blocks.find(b => b.includes('latex('));
+    expect(latexBlock).toBeTruthy();
+    expect(latexBlock).toContain("latex('\\alpha \\to \\beta')"); // one backslash each in page text
+    expect(latexBlock).not.toContain('\\\\alpha');                // never doubled
   });
 
   test('help() output pastes back into the input and runs clean', async ({ page }) => {

@@ -48,13 +48,10 @@ test.describe('app shell', () => {
     await expect(page.locator('#input-area')).toHaveValue('x = 5'); // untouched
   });
 
-  test('cheatsheet modal opens and closes', async ({ page }) => {
+  test('the Cheatsheet is gone (folded into Help)', async ({ page }) => {
     await openApp(page);
-    await page.click('button:has-text("Cheatsheet")');
-    await expect(page.locator('#help-modal')).toBeVisible();
-    await expect(page.locator('#help-modal')).toContainText('Quick Reference Cheatsheet');
-    await page.click('#help-modal button:has-text("✕")');
-    await expect(page.locator('#help-modal')).toBeHidden();
+    await expect(page.locator('button:has-text("Cheatsheet")')).toHaveCount(0);
+    await expect(page.locator('#help-modal')).toHaveCount(0);
   });
 
   test('missing libraries produce the diagnostic panel instead of a blank page', async ({ page }) => {
