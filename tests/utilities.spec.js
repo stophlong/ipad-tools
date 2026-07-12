@@ -6,11 +6,11 @@ test.describe('printf', () => {
 
   test('formats %s, %d and fixed-precision %f', async ({ page }) => {
     const out = await runScript(page, [
-      `printf("User %s is %d years old", "Stoph", 54)`,
+      `printf("User %s is %d years old", "Ada", 36)`,
       `printf("pi = %.2f", pi)`,
       `printf("%.4f", 1/3)`,
     ].join('\n'));
-    expect(results(out)[0]).toBe('User Stoph is 54 years old');
+    expect(results(out)[0]).toBe('User Ada is 36 years old');
     expect(results(out)[1]).toBe('pi = 3.14');
     expect(results(out)[2]).toBe('0.3333');
   });

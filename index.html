@@ -101,6 +101,7 @@
             font-weight: bold; font-size: 1.125rem;
         }
         h1 { margin: 0; font-size: 1.25rem; font-weight: 700; letter-spacing: -0.025em; }
+        .build-stamp { font-size: 0.65rem; color: var(--text-muted); align-self: flex-end; padding-bottom: 2px; white-space: nowrap; }
 
         /* Buttons */
         .btn {
@@ -208,6 +209,7 @@
             .fab { display: flex; }
             .desktop-run-btn { display: none; }
             .shortcut-hint { display: none; }
+            .build-stamp { display: none; }
         }
     </style>
 </head>
@@ -217,6 +219,7 @@
         <div class="flex items-center gap-3">
             <div class="logo-box">∑</div>
             <h1>ScriptCalc</h1>
+            <span id="build-stamp" class="build-stamp"></span>
         </div>
         <div class="flex gap-2">
              <button onclick="showFullHelp()" class="btn btn-ghost">Help</button>
@@ -315,7 +318,11 @@
         // Version stamp — bump whenever index.html changes. Shown at the end
         // of help() and at the bottom of the Help page, so any device can
         // tell which build it is running.
-        const APP_BUILD = '2026-07-12 03:30 UTC';
+        const APP_BUILD = '2026-07-12 03:50 UTC';
+
+        // Show the build in the header so any device can tell at a glance
+        // which version it is running (also at the end of help()).
+        document.getElementById('build-stamp').textContent = 'build ' + APP_BUILD;
 
         // help() output is generated from the same HTML the Help overlay
         // shows (HELP_PAGE_HTML, defined further down): headings become
@@ -1457,8 +1464,8 @@ printf("Denver   %s\\nMechelen %s\\nSydney   %s\\n", sDen, sMech, sSyd)</code></
     <h3>Date Arithmetic</h3>
     <pre><code># Date differences
 NewYearsDay = "2026-01-01T00:00:01.000-07:00"
-StophDOB = "1971-09-24T00:00:01.000-05:00"
-age = now() - StophDOB
+ExampleDOB = "1991-09-24T00:00:01.000-05:00"
+age = now() - ExampleDOB
 
 # Date addition
 today = now(Denver)
@@ -1571,13 +1578,13 @@ printf("%d ft %d in", height_ft2, height_in2)</code></pre>
     <h3>NATO Phonetic Alphabet</h3>
     <pre><code># Convert text to NATO phonetic
 nato('A')
-nato("Christopher Joseph Long")
+nato("long")
 nato('SOS')</code></pre>
 
     <h3>Formatted Output</h3>
     <pre><code># printf formatting
-name = "Stoph"
-age = 54
+name = "Ada"
+age = 36
 printf("User %s is %d years old\\n", name, age)
 
 # Number formatting
@@ -1696,7 +1703,7 @@ sDen = prettydate(refDay)
 printf("Denver: %s\\n", sDen)
 
 next_week = today + 1 week
-age_days = now() - "1971-09-24T00:00:01.000-05:00"
+age_days = now() - "1991-09-24T00:00:01.000-05:00"
 
 # --- TIMER & STOPWATCH ---
 # timer(30 seconds)    # Uncomment to test
