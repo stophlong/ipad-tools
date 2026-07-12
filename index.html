@@ -401,7 +401,7 @@ print("This will not run")
         // Version stamp — bump whenever index.html changes. Shown at the end
         // of help(), in the Cheatsheet, and at the bottom of the Help page,
         // so any device can tell which build it is running.
-        const APP_BUILD = '2026-07-11 23:30 UTC';
+        const APP_BUILD = '2026-07-12 00:05 UTC';
 
         // help() output is generated from the same HTML the Help overlay
         // shows (HELP_PAGE_HTML, defined further down): headings become
@@ -1588,8 +1588,9 @@ b = [2, 3, 4, 5]
 
 c = a .* b         # Element-wise multiply: [2, 6, 12, 20]
 d = a ./ b         # Element-wise divide
-e = a .^ 2         # Element-wise power: [1, 4, 9, 16]
-f = sin(a)         # Auto-vectorized: sin of each element</code></pre>
+p = a .^ 2         # Element-wise power: [1, 4, 9, 16]
+v = sin(a)         # Auto-vectorized: sin of each element
+# (don't name a variable 'e' — it shadows Euler's constant, used by log(e))</code></pre>
 
     <h2>💱 Currency Conversion</h2>
 
