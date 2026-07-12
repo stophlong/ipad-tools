@@ -16,6 +16,15 @@ test.describe('help() console reference', () => {
     expect(text).not.toContain('Complete Example Session');
   });
 
+  test('help examples never shadow built-in constants or common units', async ({ page }) => {
+    // e (Euler), pi, i (imaginary) and short unit names like s (seconds)
+    // or m (meters) must not be used as example variable names — later
+    // examples like log(e) would silently pick up the shadowed value.
+    await openApp(page);
+    const out = await runScript(page, 'help()');
+    expect(results(out)[0]).not.toMatch(/^\s*(e|pi|i|s|m|g|K)\s*=/m);
+  });
+
   test('help() ends with the build timestamp', async ({ page }) => {
     await openApp(page);
     const out = await runScript(page, 'help()');
