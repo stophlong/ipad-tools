@@ -48,6 +48,14 @@ test.describe('app shell', () => {
     await expect(page.locator('#input-area')).toHaveValue('x = 5'); // untouched
   });
 
+  test('header shows the build stamp, matching help()', async ({ page }) => {
+    await openApp(page);
+    const stamp = await page.locator('#build-stamp').textContent();
+    expect(stamp).toMatch(/^build \d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC$/);
+    const out = await runScript(page, "help('ScriptCalc build')");
+    expect(results(out)[0]).toContain(stamp.replace('build ', ''));
+  });
+
   test('the Cheatsheet is gone (folded into Help)', async ({ page }) => {
     await openApp(page);
     await expect(page.locator('button:has-text("Cheatsheet")')).toHaveCount(0);
